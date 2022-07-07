@@ -3,4 +3,4 @@ project(APIProject_2022 C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(APIProject_2022 tutorial.c main.c)
+add_executable(APIProject_2022 main.c)
