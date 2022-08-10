@@ -5,37 +5,90 @@
 
 // --------------- BST structure -----------------
 
-// --------------- Compare / Func ----------------
+struct node {
+    char key;
+    struct node *left, *right;
+};
 
-bool counter(char wordRef[], char wordP[], int pos) {
+// A utility function to create a new BST node
+struct node* newNode(int item)
+{
+    struct node* temp = (struct node*)malloc(sizeof(struct node));
+    temp->key = item;
+    temp->left = temp->right = NULL;
+    return temp;
+}
+
+void inorder(struct node* root)
+{
+    if (root != NULL) {
+        inorder(root->left);
+        printf("%d \n", root->key);
+        inorder(root->right);
+    }
+}
+
+struct node* insert(struct node* node, int key)
+{
+    /* If the tree is empty, return a new node */
+    if (node == NULL)
+        return newNode(key);
+
+    /* Otherwise, recur down the tree */
+    if (key < node->key)
+        node->left = insert(node->left, key);
+    else if (key > node->key)
+        node->right = insert(node->right, key);
+
+    /* return the (unchanged) node pointer */
+    return node;
+}
+
+// C function to search a given key in a given BST
+struct node* search(struct node* root, int key) {
+    // Base Cases: root is null or key is present at root
+    if (root == NULL || root->key == key)
+        return root;
+
+    // Key is greater than root's key
+    if (root->key < key)
+        return search(root->right, key);
+
+    // Key is smaller than root's key
+    return search(root->left, key);
+}
+
+// -----------------------------------------------
+
+bool counter(char wordRef[], const char wordP[], int pos) {
     int n = 0, c = 0, d = 0;
     for (int i = 0; i < (int) strlen(wordRef); i++) {
-        printf("%d: %c, %c\n", i, wordRef[i], wordP[i]);
-        if ((char) wordRef[i] == (char) wordP[pos]) {
+        if (wordRef[i] == wordP[pos]) {
             n++;
-            if (i < pos && (char) wordP[i] == (char) wordRef[i]) {
-                d++;
+            if (wordRef[i] == wordP[i]) {
+                c++;
             }
         }
-        if (strcmp(&wordRef[i], &wordP[i]) == 0) {
-            c++;
+    }
+    for (int j = 0; j < pos; j++) {
+        if (wordP[j] == wordP[pos] && wordRef[j] != wordP[j]) {
+            d++;
         }
     }
+    // printf("n = %d, c = %d, d = %d\n", n, c, d);
     if (d >= (n-c)) {
         return true;
     }
     return false;
 }
 
-// ------------- Compare Function ----------------
-
-void compare() {
-    char wordA[] = "abcabcabcabcabc", wordB[] = "bbaabccbccbcabc", wordRes[15] = "";
-    for (int i = 0; i < 15; i++) {
-        if (wordA[i] == wordB[i]) {
+void compare(char refWord[], char newWord[]) {
+    char *wordRes = (char*) malloc(sizeof(char)* strlen(refWord));
+    for (int i = 0; i < (int) strlen(refWord); i++) {
+        if (refWord[i] == newWord[i]) {
             wordRes[i] = '+';
         } else {
-            if (!strchr(&wordB[i], wordA[i]) || counter(wordA, wordB, i)) {
+            if (!strpbrk(newWord, &refWord[i]) || counter(refWord, newWord, i)) {
                 wordRes[i] = '/';
             } else {
                 wordRes[i] = '|';
@@ -52,8 +105,6 @@ int main() {
          cmd_insert_begin[] = "+inserisci_inizio",
          cmd_insert_end[] = "+inserisci_fine";
     char *new_word, *ref_word, tmp_letter;
-
-    compare();
 
     // read word length
     k = (int) getchar_unlocked() - 48;
@@ -87,6 +138,7 @@ int main() {
 
     // read number n of words
     n = (int) getchar_unlocked() - 48;
+    getchar_unlocked();
 
     // read words sequence
     for (int i = 0; i < n; i++) {
@@ -99,6 +151,6 @@ int main() {
                 count++;
             }
         } while (tmp_letter != 10);
-        // TODO: Compare
+        compare(ref_word, new_word);
     }
 }
