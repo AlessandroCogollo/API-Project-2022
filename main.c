@@ -3,18 +3,20 @@
 #include <string.h>
 #include <malloc.h>
 
+// ------------- GLOBAL VARIABLES ----------------
+
+int k;
+
 // --------------- BST structure -----------------
 
 struct node {
-    char key;
+    char *word;
     struct node *left, *right;
 };
 
-// A utility function to create a new BST node
-struct node* newNode(int item)
-{
+struct node* newNode(char * scannedWord) {
     struct node* temp = (struct node*)malloc(sizeof(struct node));
-    temp->key = item;
+    temp->word = scannedWord;
     temp->left = temp->right = NULL;
     return temp;
 }
@@ -23,39 +25,33 @@ void inorder(struct node* root)
 {
     if (root != NULL) {
         inorder(root->left);
-        printf("%d \n", root->key);
+        printf("%s \n", root->word);
         inorder(root->right);
     }
 }
 
-struct node* insert(struct node* node, int key)
+struct node* insert(struct node* node, char word[])
 {
     /* If the tree is empty, return a new node */
     if (node == NULL)
-        return newNode(key);
+        return newNode(word);
 
     /* Otherwise, recur down the tree */
-    if (key < node->key)
-        node->left = insert(node->left, key);
-    else if (key > node->key)
-        node->right = insert(node->right, key);
+    if (word < node->word)
+        node->left = insert(node->left, word);
+    else if (word > node->word)
+        node->right = insert(node->right, word);
 
     /* return the (unchanged) node pointer */
     return node;
 }
 
-// C function to search a given key in a given BST
-struct node* search(struct node* root, int key) {
-    // Base Cases: root is null or key is present at root
-    if (root == NULL || root->key == key)
+struct node* search(struct node* root, char word[]) {
+    if (root == NULL || root->word == word)
         return root;
-
-    // Key is greater than root's key
-    if (root->key < key)
-        return search(root->right, key);
-
-    // Key is smaller than root's key
-    return search(root->left, key);
+    if (root->word < word)
+        return search(root->right, word);
+    return search(root->left, word);
 }
 
 // -----------------------------------------------
@@ -95,62 +91,74 @@ void compare(char refWord[], char newWord[]) {
             }
         }
     }
-    printf("%s", wordRes);
+    if (!strpbrk(wordRes, "/") && !strpbrk(wordRes, "|")) {
+        printf("ok");
+    } else {
+        printf("%s", wordRes);
+    }
+}
+
+void acquireWord(char * pointerToWord) {
+    int letter_count = 0;
+    char tmp_letter, *new_word;
+    do {
+        tmp_letter = (char) getchar_unlocked();
+        if (tmp_letter != 10) {
+            pointerToWord[letter_count] = tmp_letter;
+            letter_count++;
+        }
+    } while (tmp_letter != 10);
 }
 
 int main() {
-    int k, n, count;
+    int n, word_count = 0;
     char cmd_new_game[] = "+nuova_partita",
          cmd_print_filtered[] = "+stampa_filtrate",
          cmd_insert_begin[] = "+inserisci_inizio",
          cmd_insert_end[] = "+inserisci_fine";
-    char *new_word, *ref_word, tmp_letter;
+    char *new_word, *ref_word;
+
+    struct node* root = NULL;
 
     // read word length
     k = (int) getchar_unlocked() - 48;
 
     // read admissible words
     do {
-        count = 0;
-        new_word = (char *) malloc(sizeof(char)*k);
-        do {
-            tmp_letter = (char) getchar_unlocked();
-            if (tmp_letter != 10) {
-                new_word[count] = tmp_letter;
-                count++;
-            }
-        } while (tmp_letter != 10);
+        new_word = (char *) malloc(sizeof(char) * k);
+        acquireWord(new_word);
         if (strcmp(new_word, cmd_new_game) != 0 && strlen(new_word) == k) {
-            // insert word in a "dictionary like" structure
+            if (root == NULL) {
+                root = insert(root, new_word);
+            } else {
+                insert(root, new_word);
+            }
         }
     } while (strcmp(new_word, cmd_new_game) != 0);
 
     // read reference word
-    count = 0;
-    ref_word = (char *) malloc(sizeof(char)*k);
-    do {
-        tmp_letter = (char) getchar_unlocked();
-        if (tmp_letter != 10) {
-            ref_word[count] = tmp_letter;
-            count++;
-        }
-    } while (tmp_letter != 10);
+    ref_word = (char *) malloc(sizeof(char) * k);
+    acquireWord(ref_word);
 
     // read number n of words
     n = (int) getchar_unlocked() - 48;
     getchar_unlocked();
 
     // read words sequence
-    for (int i = 0; i < n; i++) {
-        count = 0;
-        new_word = (char *) malloc(sizeof(char)*k);
-        do {
-            tmp_letter = (char) getchar_unlocked();
-            if (tmp_letter != 10) {
-                new_word[count] = tmp_letter;
-                count++;
-            }
-        } while (tmp_letter != 10);
-        compare(ref_word, new_word);
-    }
+    do {
+        new_word = (char *) malloc(sizeof(char) * k);
+        acquireWord(new_word);
+        if (strcmp(new_word, cmd_print_filtered) != 0 && strcmp(new_word, cmd_insert_begin) != 0 && strcmp(new_word, cmd_insert_end) != 0) {
+            compare(ref_word, new_word);
+            word_count++;
+        } else if (strcmp(new_word, cmd_insert_begin) == 0){
+            do {
+                new_word = (char *) malloc(sizeof(char) * k);
+                acquireWord(new_word);
+                insert(root, new_word);
+            } while (strcmp(new_word, cmd_insert_end) == 0);
+        } else {
+            inorder(root);
+        }
+    } while (word_count < n);
 }
