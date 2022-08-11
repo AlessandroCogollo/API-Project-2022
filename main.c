@@ -6,6 +6,7 @@
 // ------------- GLOBAL VARIABLES ----------------
 
 int k;
+bool winnerflag = false;
 
 // --------------- BST structure -----------------
 
@@ -14,7 +15,7 @@ struct node {
     struct node *left, *right;
 };
 
-struct node* newNode(char * scannedWord) {
+struct node* newNode(char scannedWord[]) {
     struct node* temp = (struct node*)malloc(sizeof(struct node));
     temp->word = scannedWord;
     temp->left = temp->right = NULL;
@@ -32,26 +33,30 @@ void inorder(struct node* root)
 
 struct node* insert(struct node* node, char word[])
 {
-    /* If the tree is empty, return a new node */
     if (node == NULL)
         return newNode(word);
 
-    /* Otherwise, recur down the tree */
-    if (word < node->word)
+    if (strcmp(word, node->word) < 0)
         node->left = insert(node->left, word);
-    else if (word > node->word)
+    else if (strcmp(word, node->word) > 0)
         node->right = insert(node->right, word);
 
-    /* return the (unchanged) node pointer */
     return node;
 }
 
-struct node* search(struct node* root, char word[]) {
-    if (root == NULL || root->word == word)
-        return root;
-    if (root->word < word)
-        return search(root->right, word);
-    return search(root->left, word);
+struct node* search(struct node* root, char* word) {
+    if (root != NULL) {
+        if (strcmp(root->word, word) == 0){
+            return root;
+        }
+        if (strcmp(word, root->word) < 0) {
+            return search(root->left, word);
+        } else {
+            return search(root->right, word);
+        }
+    } else {
+        return NULL;
+    }
 }
 
 // -----------------------------------------------
@@ -93,6 +98,7 @@ void compare(char refWord[], char newWord[]) {
     }
     if (!strpbrk(wordRes, "/") && !strpbrk(wordRes, "|")) {
         printf("ok");
+        winnerflag = true;
     } else {
         printf("%s", wordRes);
     }
@@ -100,22 +106,23 @@ void compare(char refWord[], char newWord[]) {
 
 void acquireWord(char * pointerToWord) {
     int letter_count = 0;
-    char tmp_letter, *new_word;
+    char tmp_letter;
     do {
         tmp_letter = (char) getchar_unlocked();
-        if (tmp_letter != 10) {
+        if ((int) tmp_letter != 10) {
             pointerToWord[letter_count] = tmp_letter;
             letter_count++;
         }
-    } while (tmp_letter != 10);
+    } while ((int) tmp_letter != 10);
+
 }
 
 int main() {
     int n, word_count = 0;
-    char cmd_new_game[] = "+nuova_partita",
+    char cmd_new_game[] =       "+nuova_partita",
          cmd_print_filtered[] = "+stampa_filtrate",
-         cmd_insert_begin[] = "+inserisci_inizio",
-         cmd_insert_end[] = "+inserisci_fine";
+         cmd_insert_begin[] =   "+inserisci_inizio",
+         cmd_insert_end[] =     "+inserisci_fine";
     char *new_word, *ref_word;
 
     struct node* root = NULL;
@@ -145,20 +152,36 @@ int main() {
     getchar_unlocked();
 
     // read words sequence
+    bool filtered_flag = false;
+    winnerflag = false;
     do {
         new_word = (char *) malloc(sizeof(char) * k);
         acquireWord(new_word);
-        if (strcmp(new_word, cmd_print_filtered) != 0 && strcmp(new_word, cmd_insert_begin) != 0 && strcmp(new_word, cmd_insert_end) != 0) {
-            compare(ref_word, new_word);
-            word_count++;
-        } else if (strcmp(new_word, cmd_insert_begin) == 0){
-            do {
-                new_word = (char *) malloc(sizeof(char) * k);
-                acquireWord(new_word);
-                insert(root, new_word);
-            } while (strcmp(new_word, cmd_insert_end) == 0);
-        } else {
+        if (strcmp(new_word, cmd_print_filtered) == 0) {
             inorder(root);
+        } else if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
+            filtered_flag = true;
+        } else if (filtered_flag == true) {
+            if (strcmp(new_word, cmd_insert_end) == 0) {
+                filtered_flag = false;
+            } else {
+                insert(root, new_word);
+            }
+        } else {
+            if (search(root, new_word) != NULL) {
+                compare(ref_word, new_word);
+                word_count++;
+            } else {
+                printf("not_exists");
+            }
         }
     } while (word_count < n);
+
+    if (winnerflag == false) {
+        printf("ko");
+    }
+
+    do {
+        acquireWord(new_word);
+    } while (strcmp(new_word, cmd_new_game) != 0);
 }
