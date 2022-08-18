@@ -5,7 +5,8 @@
 
 // ------------- GLOBAL VARIABLES ----------------
 
-int k, count = 0;
+// TODO: Change cstr and make it local!
+int k;
 bool winner_flag = false;
 struct constraint* cstr = NULL;
 
@@ -36,13 +37,18 @@ struct constraint* isPresent(struct constraint * constraintNode, char symbol) {
     }
 }
 
-struct constraint* newConstraint(char symbol, int b, int ip, int np, int mn, int en) {
+struct constraint *newConstraint(char symbol, int b, int mn, int en) {
     struct constraint* temp = (struct constraint*)malloc(sizeof(struct constraint));
     temp->symbol = symbol;
     temp->belongs = b;
     if (b == true) {
         temp->is_present = (int *) malloc(sizeof(int) * k);
         temp->not_present = (int *) malloc(sizeof(int) * k);
+        // initialize array with -1
+        for (int i = 0; i < k; i++) {
+            temp->is_present[i] = -1;
+            temp->not_present[i] = -1;
+        }
     } else {
         temp->is_present = NULL;
         temp->not_present = NULL;
@@ -55,7 +61,7 @@ struct constraint* newConstraint(char symbol, int b, int ip, int np, int mn, int
 
 struct constraint* insertConstraint(struct constraint* node, char symbol, bool b, int ip, int np, int mn, int en) {
     if (node == NULL)
-        return newConstraint(symbol, b, ip, np, mn, en);
+        return newConstraint(symbol, b, np, mn);
     if (symbol < node->symbol)
         node->left = insertConstraint(node->left, symbol, b, ip, np, mn, en);
     else if (symbol > node->symbol)
@@ -63,33 +69,35 @@ struct constraint* insertConstraint(struct constraint* node, char symbol, bool b
     return node;
 }
 
-void setConstraint(char symbol, bool belong, int ip, int np, int mp, int en) {
-    struct constraint * constraintNode = isPresent(cstr, symbol);
-    if (constraintNode == NULL) {
-        // if symbol doesn't exist
-        if (cstr == NULL) {
-            cstr = insertConstraint(cstr, symbol, belong, ip, np, mp, en);
-        } else {
-            insertConstraint(cstr, symbol, belong, ip, np, mp, en);
+void setConstraint(char symbol, bool belong, int ip, int np) {
+    if (cstr == NULL) {
+        cstr = insertConstraint(cstr, symbol, belong, ip, np, 0, 0);
+    } else {
+        struct constraint * constraintNode = isPresent(cstr, symbol);
+        if (constraintNode == NULL) {
+            // if symbol doesn't exist
+            insertConstraint(cstr, symbol, belong, ip, np, 0, 0);
         }
-    }
-    constraintNode = isPresent(cstr, symbol);
-    if (constraintNode->belongs != false) {
-        int i = 0;
-        // if ip is < 0, consider only np, and viceversa
-        if (ip >= 0) {
-            while (constraintNode->is_present[i] != 0) {
-                i++;
+        constraintNode = isPresent(cstr, symbol);
+        if (constraintNode->belongs) {
+            int i = 0;
+            // TODO: make it work
+            // if ip is < 0, consider only np, and vice-versa
+            if (ip >= 0 && np < 0) {
+                while (constraintNode->is_present[i] < 0) {
+                    i++;
+                }
+                constraintNode->is_present[i] = ip;
+            } else {
+                while (constraintNode->not_present[i] < 0) {
+                    i++;
+                }
+                constraintNode->not_present[i] = np;
             }
-            constraintNode->is_present[i] = ip;
-        } else {
-            while (constraintNode->not_present[i] != 0) {
-                i++;
-            }
-            constraintNode->not_present[i] = np;
+            // TODO: change this below
+            constraintNode->min_number++;
+            constraintNode->exact_number++;
         }
-        constraintNode->min_number = mp;
-        constraintNode->exact_number = en;
     }
 }
 
@@ -117,12 +125,18 @@ struct node* newNode(char scannedWord[]) {
     return temp;
 }
 
-void printCompWord(struct node* root, bool print) {
-    if (root != NULL && root->compatible == true) {
-        printCompWord(root->left, print);
-        if (print == true) { printf("%s\n", root->word); }
-        count++;
-        printCompWord(root->right, print);
+int printCompWord(struct node* root, bool print) {
+    if ( root == NULL)
+        return 0;
+    else {
+        if (print) {
+            printf("%s", root->word);
+        }
+        if (root->compatible) {
+            return 1 + printCompWord(root->left, print) + printCompWord(root->right, print);
+        } else {
+            return printCompWord(root->left, print) + printCompWord(root->right, print);
+        }
     }
 }
 
@@ -151,6 +165,30 @@ struct node* search(struct node* root, char* word) {
     }
 }
 
+void checkComp(struct node *node, struct constraint * constraintNode) {
+    if (constraintNode != NULL) {
+        checkComp(node, constraintNode->left);
+        if (constraintNode->belongs) {
+            // if symbol is part of word
+
+        } else {
+            // if symbol doesn't belong to the word
+            if (strpbrk(node->word, &(constraintNode->symbol)) != NULL) {
+                node->compatible = false;
+            }
+        }
+        checkComp(node, constraintNode->right);
+    }
+}
+
+void banWord(struct node* root, struct constraint* constraintNode) {
+    if (root != NULL) {
+        banWord(root->left, constraintNode);
+        checkComp(root, constraintNode);
+        banWord(root->right, constraintNode);
+    }
+}
+
 // -----------------------------------------------
 
 bool counter(char wordRef[], const char wordP[], int pos) {
@@ -176,19 +214,17 @@ bool counter(char wordRef[], const char wordP[], int pos) {
 
 void compare(struct node* root, char refWord[], char newWord[]) {
     char *wordRes = (char*) malloc(sizeof(char)* strlen(refWord));
-    for (int i = 0; i < (int) strlen(refWord); i++) {
-        // TODO: change this below
-        int tmp_mp = 8;
+    for (int i = 0; i < k; i++) {
         if (refWord[i] == newWord[i]) {
             wordRes[i] = '+';
-            setConstraint(newWord[i], true, i, i, tmp_mp, tmp_mp);
+            setConstraint(newWord[i], true, i, -1);
         } else {
             if (!strpbrk(newWord, &refWord[i]) || counter(refWord, newWord, i)) {
                 wordRes[i] = '/';
-                setConstraint(newWord[i], false, i, i, tmp_mp, tmp_mp);
+                setConstraint(newWord[i], false, i, i);
             } else {
                 wordRes[i] = '|';
-                setConstraint(newWord[i], true, -1, i, tmp_mp, tmp_mp);
+                setConstraint(newWord[i], true, -1, i);
             }
         }
     }
@@ -197,9 +233,8 @@ void compare(struct node* root, char refWord[], char newWord[]) {
         winner_flag = true;
     } else {
         printf("%s\n", wordRes);
-        printCompWord(root, false);
-        printf("%d\n", count);
-        count = 0;
+        // TODO: check why printCompWord result is delayed
+        printf("%d\n", printCompWord(root, false));
     }
 }
 
@@ -213,7 +248,6 @@ void acquireWord(char * pointerToWord) {
             letter_count++;
         }
     } while ((int) tmp_letter != 10);
-
 }
 
 #pragma clang diagnostic push
@@ -231,6 +265,8 @@ int main() {
 
     // read word length
     k = (int) getchar_unlocked() - 48;
+
+    cstr = insertConstraint(cstr, 'p', true, -1, -1, 0, 0);
 
     // read admissible words
     do {
@@ -275,6 +311,7 @@ int main() {
             } else {
                 if (search(root, new_word) != NULL) {
                     compare(root, ref_word, new_word);
+                    banWord(root, cstr);
                     word_count++;
                 } else {
                     printf("not_exists\n");
