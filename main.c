@@ -46,8 +46,8 @@ struct constraint *newConstraint(char symbol, int b, int mn, int en) {
         temp->not_present = (int *) malloc(sizeof(int) * k);
         // initialize array with -1
         for (int i = 0; i < k; i++) {
-            temp->is_present[i] = -1;
-            temp->not_present[i] = -1;
+            (temp->is_present)[i] = -1;
+            (temp->not_present)[i] = -1;
         }
     } else {
         temp->is_present = NULL;
@@ -83,20 +83,22 @@ void setConstraint(char symbol, bool belong, int ip, int np) {
             int i = 0;
             // TODO: make it work
             // if ip is < 0, consider only np, and vice-versa
-            if (ip >= 0 && np < 0) {
-                while (constraintNode->is_present[i] < 0) {
+            if (ip >= 0) {
+                while (constraintNode->is_present[i] >= 0) {
                     i++;
                 }
                 constraintNode->is_present[i] = ip;
             } else {
-                while (constraintNode->not_present[i] < 0) {
+                while (constraintNode->not_present[i] >= 0) {
                     i++;
                 }
                 constraintNode->not_present[i] = np;
             }
             // TODO: change this below
-            constraintNode->min_number++;
             constraintNode->exact_number++;
+            if (constraintNode->exact_number < constraintNode->min_number) {
+                constraintNode->min_number = constraintNode->exact_number;
+            }
         }
     }
 }
@@ -125,13 +127,20 @@ struct node* newNode(char scannedWord[]) {
     return temp;
 }
 
+void printFiltered(struct node* root) {
+    if (root != NULL) {
+        printFiltered(root->left);
+        if (root->compatible) {
+            printf("%s\n", root->word);
+        }
+        printFiltered(root->right);
+    }
+}
+
 int printCompWord(struct node* root, bool print) {
-    if ( root == NULL)
+    if (root == NULL)
         return 0;
     else {
-        if (print) {
-            printf("%s", root->word);
-        }
         if (root->compatible) {
             return 1 + printCompWord(root->left, print) + printCompWord(root->right, print);
         } else {
@@ -170,7 +179,21 @@ void checkComp(struct node *node, struct constraint * constraintNode) {
         checkComp(node, constraintNode->left);
         if (constraintNode->belongs) {
             // if symbol is part of word
-
+            int i = 0;
+            while (constraintNode->is_present[i] >= 0) {
+                if (node->word[constraintNode->is_present[i]] != constraintNode->symbol) {
+                        node->compatible = false;
+                }
+                i++;
+            }
+            int j = 0;
+            while (constraintNode->not_present[j] >= 0) {
+                if (node->word[constraintNode->not_present[j]] == constraintNode->symbol) {
+                    node->compatible = false;
+                }
+                j++;
+            }
+            // TODO: check exact number of letters
         } else {
             // if symbol doesn't belong to the word
             if (strpbrk(node->word, &(constraintNode->symbol)) != NULL) {
@@ -212,7 +235,7 @@ bool counter(char wordRef[], const char wordP[], int pos) {
     return false;
 }
 
-void compare(struct node* root, char refWord[], char newWord[]) {
+bool compare(char refWord[], char newWord[]) {
     char *wordRes = (char*) malloc(sizeof(char)* strlen(refWord));
     for (int i = 0; i < k; i++) {
         if (refWord[i] == newWord[i]) {
@@ -231,30 +254,18 @@ void compare(struct node* root, char refWord[], char newWord[]) {
     if (!strpbrk(wordRes, "/") && !strpbrk(wordRes, "|")) {
         printf("ok\n");
         winner_flag = true;
+        return false;
     } else {
         printf("%s\n", wordRes);
-        // TODO: check why printCompWord result is delayed
-        printf("%d\n", printCompWord(root, false));
+        return true;
     }
-}
-
-void acquireWord(char * pointerToWord) {
-    int letter_count = 0;
-    char tmp_letter;
-    do {
-        tmp_letter = (char) getchar_unlocked();
-        if ((int) tmp_letter != 10) {
-            pointerToWord[letter_count] = tmp_letter;
-            letter_count++;
-        }
-    } while ((int) tmp_letter != 10);
 }
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
 
 int main() {
-    int n, word_count = 0;
+    int n, word_count, compWordCount;
     char cmd_new_game[] =       "+nuova_partita",
          cmd_print_filtered[] = "+stampa_filtrate",
          cmd_insert_begin[] =   "+inserisci_inizio",
@@ -264,14 +275,16 @@ int main() {
     struct node* root = NULL;
 
     // read word length
-    k = (int) getchar_unlocked() - 48;
-
-    cstr = insertConstraint(cstr, 'p', true, -1, -1, 0, 0);
+    // TODO: change scanf with a more performing input function
+    scanf("%d", &k);
+    fflush_unlocked(stdin);
 
     // read admissible words
     do {
         new_word = (char *) malloc(sizeof(char) * k);
-        acquireWord(new_word);
+        scanf("%s", new_word);
+        fflush_unlocked(stdin);
+        // acquireWord(new_word);
         if (strcmp(new_word, cmd_new_game) != 0 && strlen(new_word) == k) {
             if (root == NULL) {
                 root = insert(root, new_word);
@@ -283,23 +296,29 @@ int main() {
 
     do {
         // initialize new game
+        word_count = 0;
         bool filtered_flag = false;
+        bool print_flag = false;
         winner_flag = false;
 
         // read reference word
         ref_word = (char *) malloc(sizeof(char) * k);
-        acquireWord(ref_word);
+        scanf("%s", ref_word);
+        fflush_unlocked(stdin);
+        //acquireWord(ref_word);
 
         // read number n of words
-        n = (int) getchar_unlocked() - 48;
-        getchar_unlocked();
+        scanf("%d", &n);
+        fflush_unlocked(stdin);
 
         // read words sequence
         do {
             new_word = (char *) malloc(sizeof(char) * k);
-            acquireWord(new_word);
+            scanf("%s", new_word);
+            fflush_unlocked(stdin);
+            // acquireWord(new_word);
             if (strcmp(new_word, cmd_print_filtered) == 0) {
-                printCompWord(root, true);
+                printFiltered(root);
             } else if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
                 filtered_flag = true;
             } else if (filtered_flag == true) {
@@ -310,8 +329,12 @@ int main() {
                 }
             } else {
                 if (search(root, new_word) != NULL) {
-                    compare(root, ref_word, new_word);
+                    print_flag = compare(ref_word, new_word);
                     banWord(root, cstr);
+                    if (print_flag) {
+                        compWordCount = printCompWord(root, false);
+                        printf("%d\n", compWordCount);
+                    }
                     word_count++;
                 } else {
                     printf("not_exists\n");
@@ -324,7 +347,9 @@ int main() {
         }
 
         do {
-            acquireWord(new_word);
+            scanf("%s", new_word);
+            fflush_unlocked(stdin);
+            // acquireWord(new_word);
             if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
                 filtered_flag = true;
             } else {
@@ -335,5 +360,8 @@ int main() {
                 }
             }
         } while (strcmp(new_word, cmd_new_game) != 0);
+
+        // TODO: initialize all var (cstr included)
+
     } while (true);
 }
