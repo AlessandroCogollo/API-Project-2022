@@ -6,13 +6,13 @@
 // ------------- GLOBAL VARIABLES ----------------
 
 // TODO: Change cstr and make it local!
-int k, *visited;
+int k, * visited;
 char * result;
 bool exac_flag = false;
 bool * is_present;
 bool * not_present;
 bool winner_flag = false;
-struct constraint* cstr = NULL;
+struct constraint* cstr;
 
 bool counter(const char wordRef[], const char wordP[], int pos) {
     int n = 0, c = 0, d = 0;
@@ -296,7 +296,7 @@ bool compare(char reference[], char new[]) {
             is_present[i] = true;
             min_number = explore(reference, new, i, false) + 1;
         } else {
-            if (!strchr(reference, new[i])) {
+            if (strchr(reference, new[i]) == NULL) {
                 result[i] = '/';
                 belongs_flag =  false;
             } else if (counter(reference, new, i)) {
@@ -315,7 +315,7 @@ bool compare(char reference[], char new[]) {
         visited[i] = 1;
         i--;
     }
-    if (!strchr(result, '/') && !strchr(result, '|')) {
+    if (strchr(result, '/') == NULL && strchr(result, '|') == NULL) {
         return false;
     } else {
         printf("%s\n", result);
@@ -327,19 +327,22 @@ bool compare(char reference[], char new[]) {
 // #pragma ide diagnostic ignored "EndlessLoop"
 
 int main() {
-    int n, word_count, compWordCount, scanf_return;
+    int n = 0, word_count, compWordCount, scanf_return;
     char cmd_new_game[] =       "+nuova_partita",
          cmd_print_filtered[] = "+stampa_filtrate",
          cmd_insert_begin[] =   "+inserisci_inizio",
          cmd_insert_end[] =     "+inserisci_fine";
     char *new_word, *ref_word;
+    char read_char;
 
     struct node* root = NULL;
 
     // read word length
     // TODO: change scanf with a more performing input function
+    // k = (int) getc(stdin) - 48;
+    // getc(stdin);
     scanf_return = scanf("%d", &k);
-    fflush_unlocked(stdin);
+    // fflush_unlocked(stdin);
 
     visited = (int *) malloc(sizeof(int) * k);
     result = (char *) malloc(sizeof(char) * k);
@@ -350,9 +353,7 @@ int main() {
     do {
         new_word = (char *) malloc(sizeof(char) * k);
         scanf_return = scanf("%s", new_word);
-        fflush_unlocked(stdin);
-        // acquireWord(new_word);
-        if (strcmp(new_word, cmd_new_game) != 0 && strlen(new_word) == k) {
+        if (strcmp(new_word, cmd_new_game) != 0) {
             if (root == NULL) {
                 root = insert(root, new_word);
             } else {
@@ -373,21 +374,18 @@ int main() {
         // read reference word
         ref_word = (char *) malloc(sizeof(char) * k);
         scanf_return = scanf("%s", ref_word);
-        fflush_unlocked(stdin);
-        //acquireWord(ref_word);
 
         // read number n of words
         scanf_return = scanf("%d", &n);
-        fflush_unlocked(stdin);
 
         // read words sequence
         do {
             // setFlagFalse(cstr);
             new_word = (char *) malloc(sizeof(char) * k);
             scanf_return = scanf("%s", new_word);
-            fflush_unlocked(stdin);
-            // acquireWord(new_word);
+            // TODO: copy tmp_word into new_word
             if (strcmp(new_word, cmd_print_filtered) == 0) {
+                banWord(root, cstr);
                 printFiltered(root);
             } else if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
                 filtered_flag = true;
@@ -420,10 +418,25 @@ int main() {
         }
 
         do {
+            int i = 0;
             new_word = (char *) malloc(sizeof(char) * k);
-            scanf_return = scanf("%s", new_word);
-            fflush_unlocked(stdin);
-            // acquireWord(new_word);
+            do {
+                read_char = (char) getchar_unlocked();
+                if (read_char == EOF) {
+                    break;
+                } else {
+                    if (read_char != 10) {
+                        // tmp_word[i] = read_char;
+                        new_word[i] = read_char;
+                        i++;
+                    }
+                }
+            } while (read_char != 10);
+
+            if (read_char == EOF) {
+                break;
+            }
+
             if (strcmp(new_word, cmd_new_game) != 0) {
                 if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
                     filtered_flag = true;
@@ -435,11 +448,12 @@ int main() {
                     }
                 }
             }
+
         } while (strcmp(new_word, cmd_new_game) != 0);
 
         // TODO: deallocate memory
-        scanf_return = scanf_return + 1;
+        scanf_return = scanf_return - 1;
         cstr = NULL;
-        ref_word = NULL;
-    } while (true);
+
+    } while (read_char != EOF);
 }
