@@ -339,10 +339,7 @@ int main() {
 
     // read word length
     // TODO: change scanf with a more performing input function
-    // k = (int) getc(stdin) - 48;
-    // getc(stdin);
     scanf_return = scanf("%d", &k);
-    // fflush_unlocked(stdin);
 
     visited = (int *) malloc(sizeof(int) * k);
     result = (char *) malloc(sizeof(char) * k);
@@ -426,10 +423,9 @@ int main() {
                     break;
                 } else {
                     if (read_char != 10) {
-                        // tmp_word[i] = read_char;
                         new_word[i] = read_char;
-                        i++;
                     }
+                    i++;
                 }
             } while (read_char != 10);
 
@@ -444,16 +440,16 @@ int main() {
                     if (strcmp(new_word, cmd_insert_end) == 0) {
                         filtered_flag = false;
                     } else {
-                        insert(root, new_word);
+                        if (strlen(new_word) > 0) {
+                            insert(root, new_word);
+                        }
                     }
                 }
             }
-
         } while (strcmp(new_word, cmd_new_game) != 0);
 
         // TODO: deallocate memory
-        scanf_return = scanf_return - 1;
+        scanf_return = scanf_return + 1;
         cstr = NULL;
-
     } while (read_char != EOF);
 }
