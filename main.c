@@ -14,6 +14,8 @@ bool * not_present;
 bool winner_flag = false;
 struct constraint* cstr;
 
+// -------------- UTILS ----------------
+
 bool counter(const char wordRef[], const char wordP[], int pos) {
     int n = 0, c = 0, d = 0;
     for (int i = k - 1; i >= 0; i--) {
@@ -64,12 +66,21 @@ struct constraint* isPresent(struct constraint * constraintNode, char symbol) {
 }
 
 struct constraint *newConstraint(char symbol, int b, int min, int exac) {
+    // TODO: change the way nodes (both constraints and words are allocated):
+    //    instead of this --> nodo = malloc(sizeof(nodo))
+    //      nodo->stringa = malloc(sizeof(char)*length)
+    //    do this --> malloc(sizeof(nodo)+sizeof(char)*length)
+
     struct constraint* temp = (struct constraint*)malloc(sizeof(struct constraint));
     temp->symbol = symbol;
     temp->belongs = b;
     if (b == true) {
         temp->is_present = (bool *) malloc(sizeof(bool) * k);
         temp->not_present = (bool *) malloc(sizeof(bool) * k);
+        for (int i = 0; i < k; i++) {
+            temp->is_present[i] = false;
+            temp->not_present[i] = false;
+        }
     } else {
         temp->is_present = NULL;
         temp->not_present = NULL;
@@ -159,6 +170,13 @@ struct node* search(struct node* root, char* word) {
     } else {
         return NULL;
     }
+}
+
+void freeBST(struct constraint* node) {
+    if (node == NULL) return;
+    freeBST(node->left);
+    freeBST(node->right);
+    free(node);
 }
 
 void checkComp(struct node *node, struct constraint * constraintNode) {
@@ -339,16 +357,11 @@ int main() {
 
     // read word length
     // TODO: change scanf with a more performing input function
-    scanf_return = scanf("%d", &k);
-
-    visited = (int *) malloc(sizeof(int) * k);
-    result = (char *) malloc(sizeof(char) * k);
-    is_present = (bool *) malloc(sizeof(bool) * k);
-    not_present = (bool *) malloc(sizeof(bool) * k);
+    k = (int) getchar_unlocked() - 48;
 
     // read admissible words
     do {
-        new_word = (char *) malloc(sizeof(char) * k);
+        new_word = (char *) malloc(sizeof(char) * (k+1));
         scanf_return = scanf("%s", new_word);
         if (strcmp(new_word, cmd_new_game) != 0) {
             if (root == NULL) {
@@ -358,9 +371,15 @@ int main() {
             }
         }
     } while (strcmp(new_word, cmd_new_game) != 0);
+    free(new_word);
 
     do {
         // initialize new game
+        visited = (int *) malloc(sizeof(int) * (k));
+        result = (char *) malloc(sizeof(char) * (k));
+        is_present = (bool *) malloc(sizeof(bool) * (k));
+        not_present = (bool *) malloc(sizeof(bool) * (k));
+
         word_count = 0;
         bool filtered_flag = false;
         bool print_flag = false;
@@ -369,7 +388,7 @@ int main() {
         setAllComp(root);
 
         // read reference word
-        ref_word = (char *) malloc(sizeof(char) * k);
+        ref_word = (char *) malloc(sizeof(char) * (k+1));
         scanf_return = scanf("%s", ref_word);
 
         // read number n of words
@@ -377,8 +396,7 @@ int main() {
 
         // read words sequence
         do {
-            // setFlagFalse(cstr);
-            new_word = (char *) malloc(sizeof(char) * k);
+            new_word = (char *) malloc(sizeof(char) * (k+1));
             scanf_return = scanf("%s", new_word);
             // TODO: copy tmp_word into new_word
             if (strcmp(new_word, cmd_print_filtered) == 0) {
@@ -414,9 +432,25 @@ int main() {
             printf("ko\n");
         }
 
+        // freeing memory
+
+        freeBST(cstr);
+        free(ref_word);
+        free(visited);
+        free(result);
+        free(is_present);
+        free(not_present);
+        cstr = NULL;
+        visited = NULL;
+        result = NULL;
+        is_present = not_present = NULL;
+
         do {
             int i = 0;
-            new_word = (char *) malloc(sizeof(char) * k);
+            new_word = (char *) malloc(sizeof(char) * (k+1));
+            for (int j = 0; j < k + 1; j++) {
+                new_word[j] = '\0';
+            }
             do {
                 read_char = (char) getchar_unlocked();
                 if (read_char == EOF) {
@@ -450,6 +484,6 @@ int main() {
 
         // TODO: deallocate memory
         scanf_return = scanf_return + 1;
-        cstr = NULL;
+
     } while (read_char != EOF);
 }
