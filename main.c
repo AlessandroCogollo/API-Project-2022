@@ -127,6 +127,14 @@ void printFiltered(struct node* root) {
     }
 }
 
+void freeWord(struct node* root) {
+    if (root == NULL) return;
+    freeWord(root->left);
+    freeWord(root->right);
+    free(root->word);
+    free(root);
+}
+
 int printCompWord(struct node* root, bool print) {
     if (root == NULL)
         return 0;
@@ -176,6 +184,10 @@ void freeBST(struct constraint* node) {
     if (node == NULL) return;
     freeBST(node->left);
     freeBST(node->right);
+    if (node->belongs) {
+        free(node->is_present);
+        free(node->not_present);
+    }
     free(node);
 }
 
@@ -340,9 +352,6 @@ bool compare(char reference[], char new[]) {
         return true;
     }
 }
-
-// #pragma clang diagnostic push
-// #pragma ide diagnostic ignored "EndlessLoop"
 
 int main() {
     int n = 0, word_count, compWordCount, scanf_return;
