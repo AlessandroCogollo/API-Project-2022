@@ -6,7 +6,7 @@
 // ------------- GLOBAL VARIABLES ----------------
 
 // TODO: Change cstr and make it local!
-int k, * visited;
+int k, * visited, comp_word;
 char * result;
 bool exac_flag = false;
 bool * is_present;
@@ -292,11 +292,11 @@ void freeWord(struct node* root) {
     free(root);
 }
 
-int printCompWord(struct node* root, bool print) {
-    if (root == NULL)
+int printCompWord(struct node* node, bool print) {
+    if (node == NULL)
         return 0;
     else {
-        if (root->compatible) {
+        if (node->compatible) {
             return 1 + printCompWord(root->left, print) + printCompWord(root->right, print);
         } else {
             return printCompWord(root->left, print) + printCompWord(root->right, print);
@@ -305,8 +305,10 @@ int printCompWord(struct node* root, bool print) {
 }
 
 struct node* insert(struct node* node, char word[]) {
-    if (node == NULL)
+    if (node == NULL) {
+        comp_word++;
         return newNode(word);
+    }
     if (strcmp(word, node->word) < 0) {
         node->left = insert(node->left, word);
         node->left->parent = node;
@@ -378,19 +380,20 @@ void setAllComp(struct node* root) {
     if (root != NULL) {
         setAllComp(root->left);
         root->compatible = true;
+        comp_word++;
         setAllComp(root->right);
     }
 }
 
-struct node* search(struct node* root, char* word) {
-    if (root != NULL) {
-        if (strcmp(root->word, word) == 0){
-            return root;
+struct node* search(struct node* node, char* word) {
+    if (node != NULL) {
+        if (strcmp(node->word, word) == 0){
+            return node;
         }
-        if (strcmp(word, root->word) < 0) {
-            return search(root->left, word);
+        if (strcmp(word, node->word) < 0) {
+            return search(node->left, word);
         } else {
-            return search(root->right, word);
+            return search(node->right, word);
         }
     } else {
         return NULL;
@@ -408,57 +411,61 @@ void freeBST(struct constraint* node) {
     free(node);
 }
 
-void checkComp(struct node *node, struct constraint * constraintNode) {
-    if (constraintNode != NULL && node != NULL) {
+bool checkComp(struct node *node, struct constraint * constraintNode) {
+    if (constraintNode != NULL && node->compatible) {
         checkComp(node, constraintNode->left);
-        if (node->compatible) {
-            if (constraintNode->belongs) {
-                int tmp_count = 0;
-                // if symbol is part of word
-                for (int i = 0; i < k; i++) {
+        if (constraintNode->belongs) {
+            int tmp_count = 0;
+            // if symbol is part of word
+            for (int i = 0; i < k; i++) {
+                if (node->word[i] == constraintNode->symbol) {
+                    tmp_count++;
+                }
+                if (constraintNode->not_present[i]) {
                     if (node->word[i] == constraintNode->symbol) {
-                        tmp_count++;
-                    }
-                    if (constraintNode->not_present[i]) {
-                        if (node->word[i] == constraintNode->symbol) {
-                            node->compatible = false;
-                            return;
-                        }
-                    }
-                    if (constraintNode->is_present[i]) {
-                        if (node->word[i] != constraintNode->symbol) {
-                            node->compatible = false;
-                            return;
-                        }
+                        node->compatible = false;
+                        return true;
                     }
                 }
-                if (constraintNode->exact_number > 0) {
-                    if (tmp_count != constraintNode->exact_number) {
+                if (constraintNode->is_present[i]) {
+                    if (node->word[i] != constraintNode->symbol) {
                         node->compatible = false;
-                        return;
+                        return true;
                     }
-                } else {
-                    if (tmp_count < constraintNode->min_number) {
-                        node->compatible = false;
-                        return;
-                    }
+                }
+            }
+            if (constraintNode->exact_number > 0) {
+                if (tmp_count != constraintNode->exact_number) {
+                    node->compatible = false;
+                    return true;
                 }
             } else {
-                // if symbol doesn't belong to the word
-                if (strchr(node->word, constraintNode->symbol) != NULL) {
+                if (tmp_count < constraintNode->min_number) {
                     node->compatible = false;
-                    return;
+                    return true;
                 }
+            }
+        } else {
+            // if symbol doesn't belong to the word
+            if (strchr(node->word, constraintNode->symbol) != NULL) {
+                node->compatible = false;
+                return true;
             }
         }
         checkComp(node, constraintNode->right);
     }
+    return false;
 }
 
 void banWord(struct node* node, struct constraint* constraintNode) {
     if (node != NULL) {
         banWord(node->left, constraintNode);
-        checkComp(node, constraintNode);
+        if (node->compatible) {
+            checkComp(node, constraintNode);
+            if (node->compatible) {
+                comp_word++;
+            }
+        }
         banWord(node->right, constraintNode);
     }
 }
@@ -570,11 +577,11 @@ bool compare(char reference[], char new[]) {
 }
 
 int main() {
-    int n = 0, word_count, compWordCount, scanf_return;
+    int n = 0, word_count, scanf_return, return_code;
     char *new_word, *ref_word;
     struct node * temp_ptr = NULL;
 
-    int return_code;
+    comp_word = 0;
 
     // read word length
     scanf_return = scanf("%d", &k);
@@ -583,7 +590,6 @@ int main() {
     // read admissible words
     do {
         new_word = (char *) malloc(sizeof(char) * (k + 1));
-        // scanf_return = scanf("%s", new_word);
         return_code = wordHandler(new_word);
         if (return_code == 0) {
             if (root == NULL) {
@@ -624,12 +630,13 @@ int main() {
             return_code = wordHandler(new_word);
             // scanf_return = scanf("%s", new_word);
             if (return_code == 3) {
-                banWord(root, cstr);
                 printFiltered(root);
             } else if (return_code == 1 && !filtered_flag) {
                 filtered_flag = true;
             } else if (filtered_flag == true) {
                 if (return_code == 2) {
+                    comp_word = 0;
+                    banWord(root, cstr);
                     filtered_flag = false;
                 } else {
                     insert(root, new_word);
@@ -637,10 +644,11 @@ int main() {
             } else {
                 if (search(root, new_word) != NULL) {
                     print_flag = compare(ref_word, new_word);
+                    comp_word = 0;
                     banWord(root, cstr);
                     if (print_flag) {
-                        compWordCount = printCompWord(root, false);
-                        printf("%d\n", compWordCount);
+                        // compWordCount = printCompWord(root, false);
+                        printf("%d\n", comp_word);
                     } else {
                         printf("ok\n");
                         winner_flag = true;
@@ -695,6 +703,7 @@ int main() {
 
         // TODO: deallocate memory
         scanf_return = scanf_return + 1;
+        comp_word = 0;
         setAllComp(root);
 
     } while (return_code != 5);
