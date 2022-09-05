@@ -172,11 +172,11 @@ struct constraint* insertConstraint(struct constraint* node, char symbol, bool b
     return node;
 }
 
-void constraintFixup(struct constraint* root, struct constraint* pt) {
+void constraintFixup(struct constraint* node, struct constraint* pt) {
     struct constraint* parent_pt = NULL;
     struct constraint* grand_parent_pt = NULL;
 
-    while ((pt != root) && (pt->color != 0) && (pt->parent->color == 1)) {
+    while ((pt != node) && (pt->color != 0) && (pt->parent->color == 1)) {
         parent_pt = pt->parent;
         grand_parent_pt = pt->parent->parent;
 
@@ -221,7 +221,7 @@ void constraintFixup(struct constraint* root, struct constraint* pt) {
             }
         }
     }
-    root->color = 0;
+    node->color = 0;
 }
 
 // --------------- BST structure -----------------
@@ -284,12 +284,12 @@ void printFiltered(struct node* node) {
     }
 }
 
-void freeWord(struct node* root) {
-    if (root == NULL) return;
-    freeWord(root->left);
-    freeWord(root->right);
-    free(root->word);
-    free(root);
+void freeWord(struct node* node) {
+    if (node == NULL) return;
+    freeWord(node->left);
+    freeWord(node->right);
+    free(node->word);
+    free(node);
 }
 
 int printCompWord(struct node* node, bool print) {
@@ -319,11 +319,11 @@ struct node* insert(struct node* node, char word[]) {
     return node;
 }
 
-void fixup(struct node* root, struct node* pt) {
+void fixup(struct node* node, struct node* pt) {
     struct node* parent_pt = NULL;
     struct node* grand_parent_pt = NULL;
 
-    while ((pt != root) && (pt->color != 0) && (pt->parent->color == 1)) {
+    while ((pt != node) && (pt->color != 0) && (pt->parent->color == 1)) {
         parent_pt = pt->parent;
         grand_parent_pt = pt->parent->parent;
 
@@ -347,19 +347,14 @@ void fixup(struct node* root, struct node* pt) {
                 grand_parent_pt->color = t;
                 pt = parent_pt;
             }
-        }
-
-        else {
+        } else {
             struct node* uncle_pt = grand_parent_pt->left;
-
-            if ((uncle_pt != NULL) && (uncle_pt->color == 1))
-            {
+            if ((uncle_pt != NULL) && (uncle_pt->color == 1)) {
                 grand_parent_pt->color = 1;
                 parent_pt->color = 0;
                 uncle_pt->color = 0;
                 pt = grand_parent_pt;
-            }
-            else {
+            } else {
                 if (pt == parent_pt->left) {
                     rightRotate(parent_pt);
                     pt = parent_pt;
@@ -373,15 +368,15 @@ void fixup(struct node* root, struct node* pt) {
             }
         }
     }
-    root->color = 0;
+    node->color = 0;
 }
 
-void setAllComp(struct node* root) {
-    if (root != NULL) {
-        setAllComp(root->left);
-        root->compatible = true;
+void setAllComp(struct node* node) {
+    if (node != NULL) {
+        setAllComp(node->left);
+        node->compatible = true;
         comp_word++;
-        setAllComp(root->right);
+        setAllComp(node->right);
     }
 }
 
@@ -617,7 +612,7 @@ int main() {
         // read reference word
         ref_word = (char *) malloc(sizeof(char) * (k+1));
         // scanf_return = scanf("%s", ref_word);
-        return_code = wordHandler(ref_word);
+        wordHandler(ref_word);
 
         // read number n of words
         // scanf_return = scanf("%d", &n);
