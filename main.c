@@ -101,9 +101,9 @@ struct constraint* isPresent(struct constraint * constraintNode, char symbol) {
 
 struct constraint *newConstraint(char symbol, int b, int min, int exac) {
     // TODO: change the way nodes (both constraints and words are allocated):
-    //    instead of this --> nodo = malloc(sizeof(nodo))
-    //      nodo->stringa = malloc(sizeof(char)*length)
-    //    do this --> malloc(sizeof(nodo)+sizeof(char)*length)
+    //    instead of this --> node = malloc(sizeof(node))
+    //      node->string = malloc(sizeof(char)*length)
+    //    do this --> malloc(sizeof(node)+sizeof(char)*length)
 
     struct constraint* temp = (struct constraint*)malloc(sizeof(struct constraint));
     temp->symbol = symbol;
@@ -411,7 +411,7 @@ bool checkComp(struct node *node, struct constraint * constraintNode) {
         checkComp(node, constraintNode->left);
         if (constraintNode->belongs) {
             int tmp_count = 0;
-            // if symbol is part of word
+            // if symbol is part of the word
             for (int i = 0; i < k; i++) {
                 if (node->word[i] == constraintNode->symbol) {
                     tmp_count++;
