@@ -416,14 +416,13 @@ bool checkComp(struct node *node, struct constraint * constraintNode) {
                 if (node->word[i] == constraintNode->symbol) {
                     tmp_count++;
                 }
-                if (constraintNode->not_present[i]) {
-                    if (node->word[i] == constraintNode->symbol) {
+                if (node->word[i] == constraintNode->symbol) {
+                    if (constraintNode->not_present[i]) {
                         node->compatible = false;
                         return true;
                     }
-                }
-                if (constraintNode->is_present[i]) {
-                    if (node->word[i] != constraintNode->symbol) {
+                } else {
+                    if (constraintNode->is_present[i]) {
                         node->compatible = false;
                         return true;
                     }
