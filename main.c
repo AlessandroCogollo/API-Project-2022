@@ -13,6 +13,7 @@ bool * is_present;
 bool * not_present;
 bool winner_flag = false;
 struct constraint* cstr;
+struct node* root;
 
 // -------------- UTILS ----------------
 
@@ -138,24 +139,58 @@ struct constraint* insertConstraint(struct constraint* node, char symbol, bool b
 struct node {
     char *word;
     bool compatible;
-    struct node *left, *right;
+    int color;
+    struct node *parent, *left, *right;
 };
+
+void rightRotate(struct node* temp) {
+    struct node* left = temp->left;
+    temp->left = left->right;
+    if (temp->left)
+        temp->left->parent = temp;
+    left->parent = temp->parent;
+    if (!temp->parent)
+        root = left;
+    else if (temp == temp->parent->left)
+        temp->parent->left = left;
+    else
+        temp->parent->right = left;
+    left->right = temp;
+    temp->parent = left;
+}
+
+void leftRotate(struct node* temp) {
+    struct node* right = temp->right;
+    temp->right = right->left;
+    if (temp->right)
+        temp->right->parent= temp;
+    right->parent = temp->parent;
+    if (!temp->parent)
+        root = right;
+    else if (temp == temp->parent->left)
+        temp->parent->left = right;
+    else
+        temp->parent->right = right;
+    right->left = temp;
+    temp->parent = right;
+}
 
 struct node* newNode(char scannedWord[]) {
     struct node* temp = (struct node*)malloc(sizeof(struct node));
     temp->word = scannedWord;
+    temp->color = 1; // red is 1, black is 0;
     temp->compatible = true;
-    temp->left = temp->right = NULL;
+    temp->left = temp->right = temp->parent = NULL;
     return temp;
 }
 
-void printFiltered(struct node* root) {
-    if (root != NULL) {
-        printFiltered(root->left);
-        if (root->compatible) {
-            printf("%s\n", root->word);
+void printFiltered(struct node* node) {
+    if (node != NULL) {
+        printFiltered(node->left);
+        if (node->compatible) {
+            printf("%s\n", node->word);
         }
-        printFiltered(root->right);
+        printFiltered(node->right);
     }
 }
 
@@ -182,11 +217,71 @@ int printCompWord(struct node* root, bool print) {
 struct node* insert(struct node* node, char word[]) {
     if (node == NULL)
         return newNode(word);
-    if (strcmp(word, node->word) < 0)
+    if (strcmp(word, node->word) < 0) {
         node->left = insert(node->left, word);
-    else if (strcmp(word, node->word) > 0)
+        node->left->parent = node;
+    } else if (strcmp(word, node->word) > 0) {
         node->right = insert(node->right, word);
+        node->right->parent = node;
+    }
     return node;
+}
+
+void fixup(struct node* root, struct node* pt) {
+    struct node* parent_pt = NULL;
+    struct node* grand_parent_pt = NULL;
+
+    while ((pt != root) && (pt->color != 0) && (pt->parent->color == 1)) {
+        parent_pt = pt->parent;
+        grand_parent_pt = pt->parent->parent;
+
+        if (parent_pt == grand_parent_pt->left) {
+            struct node* uncle_pt = grand_parent_pt->right;
+
+            if (uncle_pt != NULL && uncle_pt->color == 1) {
+                grand_parent_pt->color = 1;
+                parent_pt->color = 0;
+                uncle_pt->color = 0;
+                pt = grand_parent_pt;
+            } else {
+                if (pt == parent_pt->right) {
+                    leftRotate(parent_pt);
+                    pt = parent_pt;
+                    parent_pt = pt->parent;
+                }
+                rightRotate(grand_parent_pt);
+                int t = parent_pt->color;
+                parent_pt->color = grand_parent_pt->color;
+                grand_parent_pt->color = t;
+                pt = parent_pt;
+            }
+        }
+
+        else {
+            struct node* uncle_pt = grand_parent_pt->left;
+
+            if ((uncle_pt != NULL) && (uncle_pt->color == 1))
+            {
+                grand_parent_pt->color = 1;
+                parent_pt->color = 0;
+                uncle_pt->color = 0;
+                pt = grand_parent_pt;
+            }
+            else {
+                if (pt == parent_pt->left) {
+                    rightRotate(parent_pt);
+                    pt = parent_pt;
+                    parent_pt = pt->parent;
+                }
+                leftRotate(grand_parent_pt);
+                int t = parent_pt->color;
+                parent_pt->color = grand_parent_pt->color;
+                grand_parent_pt->color = t;
+                pt = parent_pt;
+            }
+        }
+    }
+    root->color = 0;
 }
 
 void setAllComp(struct node* root) {
@@ -237,34 +332,27 @@ void checkComp(struct node *node, struct constraint * constraintNode) {
                     if (constraintNode->not_present[i]) {
                         if (node->word[i] == constraintNode->symbol) {
                             node->compatible = false;
-                            // printf("Word: %s, banned because symbol shouldn't be placed here [i = %d]\n", node->word, i);
                         }
                     }
                     if (constraintNode->is_present[i]) {
                         if (node->word[i] != constraintNode->symbol) {
                             node->compatible = false;
-                            // printf("Word: %s, Banned because symbol should be placed here [i = %d]\n", node->word, i);
                         }
                     }
                 }
                 if (constraintNode->exact_number > 0) {
                     if (tmp_count != constraintNode->exact_number) {
                         node->compatible = false;
-                        // printf("Word: %s, Banned because of exact_number of symbol: %c\n"
-                        //       "Exact number of symbol is: %d\n", node->word, constraintNode->symbol, constraintNode->min_number);
-                    }
+                   }
                 } else {
                     if (tmp_count < constraintNode->min_number) {
                         node->compatible = false;
-                        // printf("Word: %s, Banned because of smaller min_number of symbol: %c\n"
-                        //       "Min number of symbol is: %d\n", node->word, constraintNode->symbol, constraintNode->min_number);
                     }
                 }
             } else {
                 // if symbol doesn't belong to the word
                 if (strchr(node->word, constraintNode->symbol) != NULL) {
                     node->compatible = false;
-                    // printf("Word: %s, Banned because of not belonging symbol\n", node->word);
                 }
             }
         }
@@ -389,8 +477,7 @@ bool compare(char reference[], char new[]) {
 int main() {
     int n = 0, word_count, compWordCount, scanf_return;
     char *new_word, *ref_word;
-
-    struct node* root = NULL;
+    struct node * temp_ptr = NULL;
 
     int return_code;
 
@@ -407,7 +494,8 @@ int main() {
             if (root == NULL) {
                 root = insert(root, new_word);
             } else {
-                insert(root, new_word);
+                temp_ptr = insert(root, new_word);
+                fixup(root, temp_ptr);
             }
         }
     } while (return_code != 4);
