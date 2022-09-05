@@ -16,6 +16,38 @@ struct constraint* cstr;
 
 // -------------- UTILS ----------------
 
+int wordHandler(char *pointer) {
+    char tmp_word[20], read_char;
+    int i = 0;
+    memset(tmp_word, '\0', 20);
+    do {
+        read_char = (char) getchar_unlocked();
+        if (read_char != 10 && read_char != EOF) {
+            tmp_word[i] = read_char;
+        } else if (read_char == EOF) {
+            // return end of game
+            return 5;
+        }
+        i++;
+    } while (read_char != 10);
+    // tmp_word[i] = '\n';
+    strcpy(pointer, tmp_word);
+    if (i == k + 1) {
+        return 0; // word is returned
+    } else {
+        // pointer = NULL;
+        if (strcmp(tmp_word, "+inserisci_inizio") == 0) {
+            return 1; // word is + inserisci_inizio
+        } else if (strcmp(tmp_word, "+inserisci_fine") == 0) {
+            return 2; // word is +inserisci_fine
+        } else if (strcmp(tmp_word, "+stampa_filtrate") == 0) {
+            return 3; // word is +stampa_filtrate
+        } else {
+            return 4; // word is +nuova_partita
+        }
+    }
+}
+
 bool counter(const char wordRef[], const char wordP[], int pos) {
     int n = 0, c = 0, d = 0;
     for (int i = k - 1; i >= 0; i--) {
@@ -311,6 +343,7 @@ void constraintHandler(char symbol, bool belongs, int min_number, int exact_numb
 
 bool compare(char reference[], char new[]) {
     bool belongs_flag;
+    memset(result, '\0', k + 1);
     int i = k - 1, min_number = 0, exact_number = 0;
     for (int j = 0; j < k; j++) {
         visited[j] = -1;
@@ -355,32 +388,30 @@ bool compare(char reference[], char new[]) {
 
 int main() {
     int n = 0, word_count, compWordCount, scanf_return;
-    char cmd_new_game[] =       "+nuova_partita",
-         cmd_print_filtered[] = "+stampa_filtrate",
-         cmd_insert_begin[] =   "+inserisci_inizio",
-         cmd_insert_end[] =     "+inserisci_fine";
     char *new_word, *ref_word;
-    char read_char;
 
     struct node* root = NULL;
 
+    int return_code;
+
     // read word length
-    // TODO: change scanf with a more performing input function
-    k = (int) getchar_unlocked() - 48;
+    scanf_return = scanf("%d", &k);
+    getchar_unlocked();
 
     // read admissible words
     do {
-        new_word = (char *) malloc(sizeof(char) * (k+1));
-        scanf_return = scanf("%s", new_word);
-        if (strcmp(new_word, cmd_new_game) != 0) {
+        new_word = (char *) malloc(sizeof(char) * (k + 1));
+        // scanf_return = scanf("%s", new_word);
+        return_code = wordHandler(new_word);
+        if (return_code == 0) {
             if (root == NULL) {
                 root = insert(root, new_word);
             } else {
                 insert(root, new_word);
             }
         }
-    } while (strcmp(new_word, cmd_new_game) != 0);
-    free(new_word);
+    } while (return_code != 4);
+    // free(new_word);
 
     do {
         // initialize new game
@@ -394,27 +425,28 @@ int main() {
         bool print_flag = false;
         winner_flag = false;
 
-        setAllComp(root);
-
         // read reference word
         ref_word = (char *) malloc(sizeof(char) * (k+1));
-        scanf_return = scanf("%s", ref_word);
+        // scanf_return = scanf("%s", ref_word);
+        return_code = wordHandler(ref_word);
 
         // read number n of words
+        // scanf_return = scanf("%d", &n);
         scanf_return = scanf("%d", &n);
+        getchar_unlocked();
 
         // read words sequence
         do {
             new_word = (char *) malloc(sizeof(char) * (k+1));
-            scanf_return = scanf("%s", new_word);
-            // TODO: copy tmp_word into new_word
-            if (strcmp(new_word, cmd_print_filtered) == 0) {
+            return_code = wordHandler(new_word);
+            // scanf_return = scanf("%s", new_word);
+            if (return_code == 3) {
                 banWord(root, cstr);
                 printFiltered(root);
-            } else if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
+            } else if (return_code == 1 && !filtered_flag) {
                 filtered_flag = true;
             } else if (filtered_flag == true) {
-                if (strcmp(new_word, cmd_insert_end) == 0) {
+                if (return_code == 2) {
                     filtered_flag = false;
                 } else {
                     insert(root, new_word);
@@ -443,6 +475,7 @@ int main() {
 
         // freeing memory
 
+
         freeBST(cstr);
         free(ref_word);
         free(visited);
@@ -455,32 +488,18 @@ int main() {
         is_present = not_present = NULL;
 
         do {
-            int i = 0;
+            // TODO: complete this
             new_word = (char *) malloc(sizeof(char) * (k+1));
-            for (int j = 0; j < k + 1; j++) {
-                new_word[j] = '\0';
-            }
-            do {
-                read_char = (char) getchar_unlocked();
-                if (read_char == EOF) {
-                    break;
-                } else {
-                    if (read_char != 10) {
-                        new_word[i] = read_char;
-                    }
-                    i++;
-                }
-            } while (read_char != 10);
-
-            if (read_char == EOF) {
+            return_code = wordHandler(new_word);
+            if (return_code == 5) {
                 break;
             }
 
-            if (strcmp(new_word, cmd_new_game) != 0) {
-                if (strcmp(new_word, cmd_insert_begin) == 0 && !filtered_flag) {
+            if (return_code != 4) {
+                if (return_code == 1 && !filtered_flag) {
                     filtered_flag = true;
                 } else {
-                    if (strcmp(new_word, cmd_insert_end) == 0) {
+                    if (return_code == 2) {
                         filtered_flag = false;
                     } else {
                         if (strlen(new_word) > 0) {
@@ -489,10 +508,11 @@ int main() {
                     }
                 }
             }
-        } while (strcmp(new_word, cmd_new_game) != 0);
+        } while (return_code != 4);
 
         // TODO: deallocate memory
         scanf_return = scanf_return + 1;
+        setAllComp(root);
 
-    } while (read_char != EOF);
+    } while (return_code != 5);
 }
