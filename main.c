@@ -80,7 +80,8 @@ struct constraint {
     bool *not_present;
     int min_number;
     int exact_number;
-    struct constraint *left, *right;
+    int color;
+    struct constraint *left, *right, *parent;
 };
 
 struct constraint* isPresent(struct constraint * constraintNode, char symbol) {
@@ -120,18 +121,107 @@ struct constraint *newConstraint(char symbol, int b, int min, int exac) {
     }
     temp->min_number = min;
     temp->exact_number = exac;
-    temp->left = temp->right = NULL;
+    temp->color = 1;
+    temp->left = temp->right = temp->parent = NULL;
     return temp;
+}
+
+void constraintRightRotate(struct constraint * temp) {
+    struct constraint* left = temp->left;
+    temp->left = left->right;
+    if (temp->left)
+        temp->left->parent = temp;
+    left->parent = temp->parent;
+    if (!temp->parent)
+        cstr = left;
+    else if (temp == temp->parent->left)
+        temp->parent->left = left;
+    else
+        temp->parent->right = left;
+    left->right = temp;
+    temp->parent = left;
+}
+
+void constraintLeftRotate(struct constraint* temp) {
+    struct constraint* right = temp->right;
+    temp->right = right->left;
+    if (temp->right)
+        temp->right->parent= temp;
+    right->parent = temp->parent;
+    if (!temp->parent)
+        cstr = right;
+    else if (temp == temp->parent->left)
+        temp->parent->left = right;
+    else
+        temp->parent->right = right;
+    right->left = temp;
+    temp->parent = right;
 }
 
 struct constraint* insertConstraint(struct constraint* node, char symbol, bool b, int min, int exac) {
     if (node == NULL)
         return newConstraint(symbol, b, min, exac);
-    if (symbol < node->symbol)
+    if (symbol < node->symbol) {
         node->left = insertConstraint(node->left, symbol, b, min, exac);
-    else if (symbol > node->symbol)
+        node->left->parent = node;
+    }
+    else if (symbol > node->symbol) {
         node->right = insertConstraint(node->right, symbol, b, min, exac);
+        node->right->parent = node;
+    }
     return node;
+}
+
+void constraintFixup(struct constraint* root, struct constraint* pt) {
+    struct constraint* parent_pt = NULL;
+    struct constraint* grand_parent_pt = NULL;
+
+    while ((pt != root) && (pt->color != 0) && (pt->parent->color == 1)) {
+        parent_pt = pt->parent;
+        grand_parent_pt = pt->parent->parent;
+
+        if (parent_pt == grand_parent_pt->left) {
+            struct constraint* uncle_pt = grand_parent_pt->right;
+
+            if (uncle_pt != NULL && uncle_pt->color == 1) {
+                grand_parent_pt->color = 1;
+                parent_pt->color = 0;
+                uncle_pt->color = 0;
+                pt = grand_parent_pt;
+            } else {
+                if (pt == parent_pt->right) {
+                    constraintLeftRotate(parent_pt);
+                    pt = parent_pt;
+                    parent_pt = pt->parent;
+                }
+                constraintRightRotate(grand_parent_pt);
+                int t = parent_pt->color;
+                parent_pt->color = grand_parent_pt->color;
+                grand_parent_pt->color = t;
+                pt = parent_pt;
+            }
+        } else {
+            struct constraint* uncle_pt = grand_parent_pt->left;
+            if ((uncle_pt != NULL) && (uncle_pt->color == 1)) {
+                grand_parent_pt->color = 1;
+                parent_pt->color = 0;
+                uncle_pt->color = 0;
+                pt = grand_parent_pt;
+            } else {
+                if (pt == parent_pt->left) {
+                    constraintRightRotate(parent_pt);
+                    pt = parent_pt;
+                    parent_pt = pt->parent;
+                }
+                constraintLeftRotate(grand_parent_pt);
+                int t = parent_pt->color;
+                parent_pt->color = grand_parent_pt->color;
+                grand_parent_pt->color = t;
+                pt = parent_pt;
+            }
+        }
+    }
+    root->color = 0;
 }
 
 // --------------- BST structure -----------------
@@ -407,7 +497,8 @@ void constraintHandler(char symbol, bool belongs, int min_number, int exact_numb
     } else {
         if (constraintNode == NULL) {
             // if symbol doesn't exist
-            insertConstraint(cstr, symbol, belongs, min_number, exact_number);
+            constraintNode = insertConstraint(cstr, symbol, belongs, min_number, exact_number);
+            constraintFixup(cstr, constraintNode);
         }
     }
     constraintNode = isPresent(cstr, symbol);
