@@ -409,7 +409,7 @@ void freeBST(struct constraint* node) {
 }
 
 void checkComp(struct node *node, struct constraint * constraintNode) {
-    if (constraintNode != NULL) {
+    if (constraintNode != NULL && node != NULL) {
         checkComp(node, constraintNode->left);
         if (node->compatible) {
             if (constraintNode->belongs) {
@@ -422,27 +422,32 @@ void checkComp(struct node *node, struct constraint * constraintNode) {
                     if (constraintNode->not_present[i]) {
                         if (node->word[i] == constraintNode->symbol) {
                             node->compatible = false;
+                            return;
                         }
                     }
                     if (constraintNode->is_present[i]) {
                         if (node->word[i] != constraintNode->symbol) {
                             node->compatible = false;
+                            return;
                         }
                     }
                 }
                 if (constraintNode->exact_number > 0) {
                     if (tmp_count != constraintNode->exact_number) {
                         node->compatible = false;
-                   }
+                        return;
+                    }
                 } else {
                     if (tmp_count < constraintNode->min_number) {
                         node->compatible = false;
+                        return;
                     }
                 }
             } else {
                 // if symbol doesn't belong to the word
                 if (strchr(node->word, constraintNode->symbol) != NULL) {
                     node->compatible = false;
+                    return;
                 }
             }
         }
@@ -450,13 +455,12 @@ void checkComp(struct node *node, struct constraint * constraintNode) {
     }
 }
 
-bool banWord(struct node* root, struct constraint* constraintNode) {
-    if (root != NULL) {
-        banWord(root->left, constraintNode);
-        checkComp(root, constraintNode);
-        banWord(root->right, constraintNode);
+void banWord(struct node* node, struct constraint* constraintNode) {
+    if (node != NULL) {
+        banWord(node->left, constraintNode);
+        checkComp(node, constraintNode);
+        banWord(node->right, constraintNode);
     }
-    return true;
 }
 
 // -----------------------------------------------
