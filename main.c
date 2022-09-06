@@ -119,13 +119,9 @@ struct constraint *newConstraint(char symbol, int b, int min, int exac) {
     struct constraint * temp = (struct constraint *)malloc(sizeof(struct constraint));
     temp->symbol = symbol;
     temp->belongs = b;
-    if (b == true) {
-        temp->not_present = (bool *) malloc(sizeof(bool) * k);
-        for (int i = 0; i < k; i++) {
-            temp->not_present[i] = false;
-        }
-    } else {
-        temp->not_present = NULL;
+    temp->not_present = (bool *) malloc(sizeof(bool) * k);
+    for (int i = 0; i < k; i++) {
+        temp->not_present[i] = false;
     }
     temp->min_number = min;
     temp->exact_number = exac;
@@ -312,14 +308,12 @@ void freeBST() {
 }
 
 bool checkComp(struct node *node, struct constraint * constraintNode) {
+    int tmp_count = 0;
+    // if symbol is part of the word
     if (constraintNode->belongs) {
-        int tmp_count = 0;
-        // if symbol is part of the word
         for (int i = 0; i < k; i++) {
             if (node->word[i] == constraintNode->symbol) {
                 tmp_count++;
-            }
-            if (node->word[i] == constraintNode->symbol) {
                 if (constraintNode->not_present[i]) {
                     node->compatible = false;
                     return true;
@@ -338,7 +332,6 @@ bool checkComp(struct node *node, struct constraint * constraintNode) {
             }
         }
     } else {
-        // if symbol doesn't belong to the word
         if (strchr(node->word, constraintNode->symbol) != NULL) {
             node->compatible = false;
             return true;
@@ -351,16 +344,16 @@ void banWord(struct node* node, struct constraint* constraintNode) {
     if (node != NULL) {
         banWord(node->left, constraintNode);
         if (node->compatible) {
-            bool flag = false;
-            for (int i = 0; i < LENGTH && !flag; i++) {
-                if (i < k) {
-                    if (secure_word[i] != node->word[i] && secure_word[i] != '$') {
-                        node->compatible = false;
-                        flag = true;
-                    }
+            // bool flag = false;
+            for (int i = 0; i < k && node->compatible; i++) {
+                if (secure_word[i] != node->word[i] && secure_word[i] != '$') {
+                    node->compatible = false;
+                    break;
                 }
-                if (cstr[i] != NULL && !flag) {
-                    flag = checkComp(node, cstr[i]);
+            }
+            for (int i = 0; i < LENGTH && node->compatible; i++) {
+                if (cstr[i] != NULL) {
+                    checkComp(node, cstr[i]);
                 }
             }
             if (node->compatible) {
@@ -403,7 +396,7 @@ int explore(char reference[], char new[], int pos, bool incr_flag) {
 }
 
 void constraintHandler(char symbol, bool belongs, int min_number, int exact_number) {
-    int lookupvalue = lookUpFunction(symbol);
+int lookupvalue = lookUpFunction(symbol);
     if (cstr[lookupvalue] == NULL) {
         cstr[lookupvalue] = newConstraint(symbol, belongs, min_number, exact_number);
     }
