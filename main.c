@@ -413,9 +413,8 @@ void freeBST(struct constraint* node) {
 }
 
 bool checkComp(struct node *node, struct constraint * constraintNode, bool flag) {
-    if (constraintNode != NULL) {
-        checkComp(node, constraintNode->left, flag);
-        if (flag) {
+    if (!flag) {
+        if (constraintNode != NULL && !constraintNode->applied) {
             if (constraintNode->belongs) {
                 int tmp_count = 0;
                 // if symbol is part of the word
@@ -446,49 +445,56 @@ bool checkComp(struct node *node, struct constraint * constraintNode, bool flag)
                     return true;
                 }
             }
-        } else {
-            if (!constraintNode->applied) {
-                if (constraintNode->belongs) {
-                    int tmp_count = 0;
-                    // if symbol is part of the word
-                    for (int i = 0; i < k; i++) {
-                        if (node->word[i] == constraintNode->symbol) {
-                            tmp_count++;
-                            if (constraintNode->not_present[i]) {
-                                node->compatible = false;
-                                return true;
-                            }
+            if (node->compatible) {
+                checkComp(node, constraintNode->left, flag);
+                checkComp(node, constraintNode->right, flag);
+            }
+        }
+    } else {
+        if (constraintNode != NULL) {
+            if (constraintNode->belongs) {
+                int tmp_count = 0;
+                // if symbol is part of the word
+                for (int i = 0; i < k; i++) {
+                    if (node->word[i] == constraintNode->symbol) {
+                        tmp_count++;
+                        if (constraintNode->not_present[i]) {
+                            node->compatible = false;
+                            return true;
                         }
                     }
-                    if (constraintNode->exact_number > 0) {
-                        if (tmp_count != constraintNode->exact_number) {
-                            node->compatible = false;
-                            return true;
-                        }
-                    } else {
-                        if (tmp_count < constraintNode->min_number) {
-                            node->compatible = false;
-                            return true;
-                        }
+                }
+                if (constraintNode->exact_number > 0) {
+                    if (tmp_count != constraintNode->exact_number) {
+                        node->compatible = false;
+                        return true;
                     }
                 } else {
-                    // if symbol doesn't belong to the word
-                    if (strchr(node->word, constraintNode->symbol) != NULL) {
+                    if (tmp_count < constraintNode->min_number) {
                         node->compatible = false;
                         return true;
                     }
                 }
+            } else {
+                // if symbol doesn't belong to the word
+                if (strchr(node->word, constraintNode->symbol) != NULL) {
+                    node->compatible = false;
+                    return true;
+                }
+            }
+            if (node->compatible) {
+                checkComp(node, constraintNode->left, flag);
+                checkComp(node, constraintNode->right, flag);
             }
         }
-        checkComp(node, constraintNode->right, flag);
     }
     return false;
 }
 
 void banWord(struct node* node, struct constraint* constraintNode, bool flag) {
     if (node != NULL) {
-        banWord(node->left, constraintNode, flag);
         if (flag) {
+            banWord(node->left, constraintNode, flag);
             if (node->compatible && node->new) {
                 for (int i = 0; i < k && node->compatible; i++) {
                     if (node->word[i] != secure_word[i] && secure_word[i] != '$') {
@@ -503,20 +509,35 @@ void banWord(struct node* node, struct constraint* constraintNode, bool flag) {
                 }
                 node->new = false;
             }
+            banWord(node->right, constraintNode, flag);
         } else {
-            for (int i = 0; i < k && node->compatible; i++) {
-                if (node->word[i] != secure_word[i] && secure_word[i] != '$') {
-                    node->compatible = false;
+            banWord(node->left, constraintNode, flag);
+            if (node->compatible) {
+                for (int i = 0; i < k && node->compatible; i++) {
+                    if (node->word[i] != secure_word[i] && secure_word[i] != '$') {
+                        node->compatible = false;
+                    }
                 }
+                if (node->compatible) {
+                    checkComp(node, constraintNode, flag);
+                }
+                if (node->compatible) {
+                    comp_word++;
+                }
+                node->new = false;
             }
-            if (node->compatible) {
-                checkComp(node, constraintNode, flag);
-            }
-            if (node->compatible) {
-                comp_word++;
-            }
+            banWord(node->right, constraintNode, flag);
         }
-        banWord(node->right, constraintNode, flag);
+    }
+}
+
+void setAllApplied (struct constraint * root) {
+    if (root != NULL) {
+        setAllApplied(root->left);
+        if (!root->applied) {
+            root->applied = true;
+        }
+        setAllApplied(root->right);
     }
 }
 
@@ -690,6 +711,7 @@ int main() {
                     comp_word = 0;
                     // TODO: applica solo alle nuove parole
                     banWord(root, cstr, true);
+                    setAllApplied(cstr);
                     filtered_flag = false;
                 } else {
                     insert(root, new_word);
@@ -697,10 +719,11 @@ int main() {
             } else {
                 if (search(root, new_word) != NULL) {
                     print_flag = compare(ref_word, new_word);
-                    comp_word = 0;
-                    banWord(root, cstr, false);
                     // TODO: applica solo i nuovi vincoli
                     if (print_flag) {
+                        comp_word = 0;
+                        banWord(root, cstr, false);
+                        // setAllApplied(cstr);
                         printf("%d\n", comp_word);
                     } else {
                         printf("ok\n");
