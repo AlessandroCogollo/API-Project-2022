@@ -233,6 +233,7 @@ void constraintFixup(struct constraint* node, struct constraint* pt) {
 struct node {
     char *word;
     bool compatible;
+    bool new;
     int color;
     struct node *parent, *left, *right;
 };
@@ -274,6 +275,7 @@ struct node* newNode(char scannedWord[]) {
     temp->word = scannedWord;
     temp->color = 1; // red is 1, black is 0;
     temp->compatible = true;
+    temp->new = true;
     temp->left = temp->right = temp->parent = NULL;
     return temp;
 }
@@ -384,14 +386,6 @@ void setAllComp(struct node* node) {
     }
 }
 
-void setAllNotApplied(struct constraint* constraintNode) {
-    if (constraintNode != NULL) {
-        setAllNotApplied(constraintNode->left);
-        constraintNode->applied = false;
-        setAllNotApplied(constraintNode->right);
-    }
-}
-
 struct node* search(struct node* node, char* word) {
     if (node != NULL) {
         if (strcmp(node->word, word) == 0){
@@ -418,10 +412,10 @@ void freeBST(struct constraint* node) {
     free(node);
 }
 
-bool checkComp(struct node *node, struct constraint * constraintNode) {
+bool checkComp(struct node *node, struct constraint * constraintNode, bool flag) {
     if (constraintNode != NULL) {
-        checkComp(node, constraintNode->left);
-        if (!constraintNode->applied) {
+        checkComp(node, constraintNode->left, flag);
+        if (flag) {
             if (constraintNode->belongs) {
                 int tmp_count = 0;
                 // if symbol is part of the word
@@ -452,29 +446,77 @@ bool checkComp(struct node *node, struct constraint * constraintNode) {
                     return true;
                 }
             }
+        } else {
+            if (!constraintNode->applied) {
+                if (constraintNode->belongs) {
+                    int tmp_count = 0;
+                    // if symbol is part of the word
+                    for (int i = 0; i < k; i++) {
+                        if (node->word[i] == constraintNode->symbol) {
+                            tmp_count++;
+                            if (constraintNode->not_present[i]) {
+                                node->compatible = false;
+                                return true;
+                            }
+                        }
+                    }
+                    if (constraintNode->exact_number > 0) {
+                        if (tmp_count != constraintNode->exact_number) {
+                            node->compatible = false;
+                            return true;
+                        }
+                    } else {
+                        if (tmp_count < constraintNode->min_number) {
+                            node->compatible = false;
+                            return true;
+                        }
+                    }
+                } else {
+                    // if symbol doesn't belong to the word
+                    if (strchr(node->word, constraintNode->symbol) != NULL) {
+                        node->compatible = false;
+                        return true;
+                    }
+                }
+            }
         }
-        checkComp(node, constraintNode->right);
+        checkComp(node, constraintNode->right, flag);
     }
     return false;
 }
 
-void banWord(struct node* node, struct constraint* constraintNode) {
+void banWord(struct node* node, struct constraint* constraintNode, bool flag) {
     if (node != NULL) {
-        banWord(node->left, constraintNode);
-        if (node->compatible) {
+        banWord(node->left, constraintNode, flag);
+        if (flag) {
+            if (node->compatible && node->new) {
+                for (int i = 0; i < k && node->compatible; i++) {
+                    if (node->word[i] != secure_word[i] && secure_word[i] != '$') {
+                        node->compatible = false;
+                    }
+                }
+                if (node->compatible) {
+                    checkComp(node, constraintNode, flag);
+                }
+                if (node->compatible) {
+                    comp_word++;
+                }
+                node->new = false;
+            }
+        } else {
             for (int i = 0; i < k && node->compatible; i++) {
                 if (node->word[i] != secure_word[i] && secure_word[i] != '$') {
                     node->compatible = false;
                 }
             }
             if (node->compatible) {
-                checkComp(node, constraintNode);
+                checkComp(node, constraintNode, flag);
             }
             if (node->compatible) {
                 comp_word++;
             }
         }
-        banWord(node->right, constraintNode);
+        banWord(node->right, constraintNode, flag);
     }
 }
 
@@ -646,8 +688,8 @@ int main() {
             } else if (filtered_flag == true) {
                 if (return_code == 2) {
                     comp_word = 0;
-                    setAllNotApplied(cstr);
-                    banWord(root, cstr);
+                    // TODO: applica solo alle nuove parole
+                    banWord(root, cstr, true);
                     filtered_flag = false;
                 } else {
                     insert(root, new_word);
@@ -656,9 +698,9 @@ int main() {
                 if (search(root, new_word) != NULL) {
                     print_flag = compare(ref_word, new_word);
                     comp_word = 0;
-                    banWord(root, cstr);
+                    banWord(root, cstr, false);
+                    // TODO: applica solo i nuovi vincoli
                     if (print_flag) {
-                        // compWordCount = printCompWord(root, false);
                         printf("%d\n", comp_word);
                     } else {
                         printf("ok\n");
@@ -675,11 +717,7 @@ int main() {
             printf("ko\n");
         }
 
-        // freeing memory
-
-
         freeBST(cstr);
-        free(ref_word);
         free(visited);
         free(result);
         free(is_present);
