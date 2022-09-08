@@ -3,19 +3,16 @@
 #include <string.h>
 #include <malloc.h>
 
-#define LENGTH 64
-
 // ------------- GLOBAL VARIABLES ----------------
 
 // TODO: Change cstr and make it local!
 int k, * visited, comp_word;
-char * result;
+char * result, * secure_word;
+bool exac_flag = false;
 bool * is_present;
 bool * not_present;
-bool exac_flag = false;
 bool winner_flag = false;
-char * secure_word;
-struct constraint *cstr[LENGTH];
+struct constraint* cstr;
 struct node* root;
 
 // -------------- UTILS ----------------
@@ -79,32 +76,25 @@ bool counter(const char wordRef[], const char wordP[], int pos) {
 struct constraint {
     char symbol;
     bool belongs;
+    bool applied;
+    bool *is_present;
     bool *not_present;
     int min_number;
     int exact_number;
+    int color;
+    struct constraint *left, *right, *parent;
 };
 
-int lookUpFunction(char symbol) {
-    int value = (int) symbol;
-    if (value >= 65 && value <= 90) {
-        value = value - 65;
-    } else if (value >= 97 && value <= 122) {
-        value = value - 71;
-    } else if (value >= 48 && value <= 57) {
-        value = value + 4;
-    } else if (value == 45) {
-        // char: -
-        value = 62;
-    } else if (value == 95) {
-        value = 63;
-    }
-    return value;
-}
-
-struct constraint* isPresent(char symbol) {
-    int value = lookUpFunction(symbol);
-    if (cstr[value] != NULL) {
-        return cstr[value];
+struct constraint* isPresent(struct constraint * constraintNode, char symbol) {
+    if (constraintNode != NULL) {
+        if (constraintNode->symbol == symbol){
+            return constraintNode;
+        }
+        if (symbol < constraintNode->symbol) {
+            return isPresent(constraintNode->left, symbol);
+        } else {
+            return isPresent(constraintNode->right, symbol);
+        }
     } else {
         return NULL;
     }
@@ -116,17 +106,127 @@ struct constraint *newConstraint(char symbol, int b, int min, int exac) {
     //      node->string = malloc(sizeof(char)*length)
     //    do this --> malloc(sizeof(node)+sizeof(char)*length)
 
-    struct constraint * temp = (struct constraint *)malloc(sizeof(struct constraint));
+    struct constraint* temp = (struct constraint*)malloc(sizeof(struct constraint));
     temp->symbol = symbol;
     temp->belongs = b;
-    temp->not_present = (bool *) malloc(sizeof(bool) * k);
-    for (int i = 0; i < k; i++) {
-        temp->not_present[i] = false;
+    temp->applied = false;
+    if (b == true) {
+        // temp->is_present = (bool *) malloc(sizeof(bool) * k);
+        temp->not_present = (bool *) malloc(sizeof(bool) * k);
+        for (int i = 0; i < k; i++) {
+            // temp->is_present[i] = false;
+            temp->not_present[i] = false;
+        }
+    } else {
+        temp->is_present = NULL;
+        temp->not_present = NULL;
     }
     temp->min_number = min;
     temp->exact_number = exac;
+    temp->color = 1;
+    temp->left = temp->right = temp->parent = NULL;
     return temp;
 }
+
+void constraintRightRotate(struct constraint * temp) {
+    struct constraint* left = temp->left;
+    temp->left = left->right;
+    if (temp->left)
+        temp->left->parent = temp;
+    left->parent = temp->parent;
+    if (!temp->parent)
+        cstr = left;
+    else if (temp == temp->parent->left)
+        temp->parent->left = left;
+    else
+        temp->parent->right = left;
+    left->right = temp;
+    temp->parent = left;
+}
+
+void constraintLeftRotate(struct constraint* temp) {
+    struct constraint* right = temp->right;
+    temp->right = right->left;
+    if (temp->right)
+        temp->right->parent= temp;
+    right->parent = temp->parent;
+    if (!temp->parent)
+        cstr = right;
+    else if (temp == temp->parent->left)
+        temp->parent->left = right;
+    else
+        temp->parent->right = right;
+    right->left = temp;
+    temp->parent = right;
+}
+
+struct constraint* insertConstraint(struct constraint* node, char symbol, bool b, int min, int exac) {
+    if (node == NULL)
+        return newConstraint(symbol, b, min, exac);
+    if (symbol < node->symbol) {
+        node->left = insertConstraint(node->left, symbol, b, min, exac);
+        node->left->parent = node;
+    }
+    else if (symbol > node->symbol) {
+        node->right = insertConstraint(node->right, symbol, b, min, exac);
+        node->right->parent = node;
+    }
+    return node;
+}
+
+void constraintFixup(struct constraint* node, struct constraint* pt) {
+    struct constraint* parent_pt = NULL;
+    struct constraint* grand_parent_pt = NULL;
+
+    while ((pt != node) && (pt->color != 0) && (pt->parent->color == 1)) {
+        parent_pt = pt->parent;
+        grand_parent_pt = pt->parent->parent;
+
+        if (parent_pt == grand_parent_pt->left) {
+            struct constraint* uncle_pt = grand_parent_pt->right;
+
+            if (uncle_pt != NULL && uncle_pt->color == 1) {
+                grand_parent_pt->color = 1;
+                parent_pt->color = 0;
+                uncle_pt->color = 0;
+                pt = grand_parent_pt;
+            } else {
+                if (pt == parent_pt->right) {
+                    constraintLeftRotate(parent_pt);
+                    pt = parent_pt;
+                    parent_pt = pt->parent;
+                }
+                constraintRightRotate(grand_parent_pt);
+                int t = parent_pt->color;
+                parent_pt->color = grand_parent_pt->color;
+                grand_parent_pt->color = t;
+                pt = parent_pt;
+            }
+        } else {
+            struct constraint* uncle_pt = grand_parent_pt->left;
+            if ((uncle_pt != NULL) && (uncle_pt->color == 1)) {
+                grand_parent_pt->color = 1;
+                parent_pt->color = 0;
+                uncle_pt->color = 0;
+                pt = grand_parent_pt;
+            } else {
+                if (pt == parent_pt->left) {
+                    constraintRightRotate(parent_pt);
+                    pt = parent_pt;
+                    parent_pt = pt->parent;
+                }
+                constraintLeftRotate(grand_parent_pt);
+                int t = parent_pt->color;
+                parent_pt->color = grand_parent_pt->color;
+                grand_parent_pt->color = t;
+                pt = parent_pt;
+            }
+        }
+    }
+    node->color = 0;
+}
+
+// TODO: fix RB-trees
 
 // --------------- BST structure -----------------
 
@@ -284,6 +384,14 @@ void setAllComp(struct node* node) {
     }
 }
 
+void setAllNotApplied(struct constraint* constraintNode) {
+    if (constraintNode != NULL) {
+        setAllNotApplied(constraintNode->left);
+        constraintNode->applied = false;
+        setAllNotApplied(constraintNode->right);
+    }
+}
+
 struct node* search(struct node* node, char* word) {
     if (node != NULL) {
         if (strcmp(node->word, word) == 0){
@@ -299,43 +407,53 @@ struct node* search(struct node* node, char* word) {
     }
 }
 
-void freeBST() {
-    for (int i = 0; i < 54; i++) {
-        if (cstr[i] != NULL) {
-            free(cstr[i]);
-        }
+void freeBST(struct constraint* node) {
+    if (node == NULL) return;
+    freeBST(node->left);
+    freeBST(node->right);
+    if (node->belongs) {
+        // free(node->is_present);
+        free(node->not_present);
     }
+    free(node);
 }
 
 bool checkComp(struct node *node, struct constraint * constraintNode) {
-    int tmp_count = 0;
-    // if symbol is part of the word
-    if (constraintNode->belongs) {
-        for (int i = 0; i < k; i++) {
-            if (node->word[i] == constraintNode->symbol) {
-                tmp_count++;
-                if (constraintNode->not_present[i]) {
+    if (constraintNode != NULL) {
+        checkComp(node, constraintNode->left);
+        if (!constraintNode->applied) {
+            if (constraintNode->belongs) {
+                int tmp_count = 0;
+                // if symbol is part of the word
+                for (int i = 0; i < k; i++) {
+                    if (node->word[i] == constraintNode->symbol) {
+                        tmp_count++;
+                        if (constraintNode->not_present[i]) {
+                            node->compatible = false;
+                            return true;
+                        }
+                    }
+                }
+                if (constraintNode->exact_number > 0) {
+                    if (tmp_count != constraintNode->exact_number) {
+                        node->compatible = false;
+                        return true;
+                    }
+                } else {
+                    if (tmp_count < constraintNode->min_number) {
+                        node->compatible = false;
+                        return true;
+                    }
+                }
+            } else {
+                // if symbol doesn't belong to the word
+                if (strchr(node->word, constraintNode->symbol) != NULL) {
                     node->compatible = false;
                     return true;
                 }
             }
         }
-        if (constraintNode->exact_number > 0) {
-            if (tmp_count != constraintNode->exact_number) {
-                node->compatible = false;
-                return true;
-            }
-        } else {
-            if (tmp_count < constraintNode->min_number) {
-                node->compatible = false;
-                return true;
-            }
-        }
-    } else {
-        if (strchr(node->word, constraintNode->symbol) != NULL) {
-            node->compatible = false;
-            return true;
-        }
+        checkComp(node, constraintNode->right);
     }
     return false;
 }
@@ -344,17 +462,13 @@ void banWord(struct node* node, struct constraint* constraintNode) {
     if (node != NULL) {
         banWord(node->left, constraintNode);
         if (node->compatible) {
-            // bool flag = false;
             for (int i = 0; i < k && node->compatible; i++) {
-                if (secure_word[i] != node->word[i] && secure_word[i] != '$') {
+                if (node->word[i] != secure_word[i] && secure_word[i] != '$') {
                     node->compatible = false;
-                    break;
                 }
             }
-            for (int i = 0; i < LENGTH && node->compatible; i++) {
-                if (cstr[i] != NULL) {
-                    checkComp(node, cstr[i]);
-                }
+            if (node->compatible) {
+                checkComp(node, constraintNode);
             }
             if (node->compatible) {
                 comp_word++;
@@ -376,6 +490,7 @@ int explore(char reference[], char new[], int pos, bool incr_flag) {
                 if (reference[l] == new[l]) {
                     min_number++;
                     is_present[l] = true;
+                    secure_word[l] = new[l];
                 } else {
                     if (counter(reference, new, l)) {
                         exac_flag = true;
@@ -396,26 +511,31 @@ int explore(char reference[], char new[], int pos, bool incr_flag) {
 }
 
 void constraintHandler(char symbol, bool belongs, int min_number, int exact_number) {
-int lookupvalue = lookUpFunction(symbol);
-    if (cstr[lookupvalue] == NULL) {
-        cstr[lookupvalue] = newConstraint(symbol, belongs, min_number, exact_number);
+    struct constraint *constraintNode = isPresent(cstr, symbol);
+    if (cstr == NULL) {
+        cstr = insertConstraint(cstr, symbol, belongs, min_number, exact_number);
+    } else {
+        if (constraintNode == NULL) {
+            // if symbol doesn't exist
+            constraintNode = insertConstraint(cstr, symbol, belongs, min_number, exact_number);
+            constraintFixup(cstr, constraintNode);
+        }
     }
-    if (cstr[lookupvalue]->belongs) {
+    constraintNode = isPresent(cstr, symbol);
+    if (constraintNode->belongs) {
         for (int i = 0; i < k; i++) {
-            if (is_present[i]) {
-                secure_word[i] = symbol;
-            }
             if (not_present[i]) {
-                cstr[lookupvalue]->not_present[i] = true;
+                constraintNode->not_present[i] = true;
             }
         }
-        if (cstr[lookupvalue]->min_number < min_number) {
-            cstr[lookupvalue]->min_number = min_number;
+        if (constraintNode->min_number < min_number) {
+            constraintNode->min_number = min_number;
         }
         if (exac_flag) {
-            cstr[lookupvalue]->exact_number = min_number;
+            constraintNode->exact_number = min_number;
         }
     }
+    constraintNode->applied = false;
 }
 
 bool compare(char reference[], char new[]) {
@@ -427,13 +547,14 @@ bool compare(char reference[], char new[]) {
     }
     while (i >= 0) {
         for (int j = 0; j < k; j++) {
-            is_present[j] = false;
+            // is_present[j] = false;
             not_present[j] = false;
         }
         if (reference[i] == new[i]) {
             result[i] = '+';
             belongs_flag = true;
             is_present[i] = true;
+            secure_word[i] = new[i];
             min_number = explore(reference, new, i, false) + 1;
         } else {
             if (strchr(reference, new[i]) == NULL) {
@@ -495,12 +616,9 @@ int main() {
         result = (char *) malloc(sizeof(char) * (k));
         is_present = (bool *) malloc(sizeof(bool) * (k));
         not_present = (bool *) malloc(sizeof(bool) * (k));
-
         secure_word = (char *) malloc(sizeof(char) * k);
+
         memset(secure_word, '$', k);
-        for (int i = 0; i < LENGTH; i++) {
-            cstr[i] = NULL;
-        }
 
         word_count = 0;
         bool filtered_flag = false;
@@ -509,7 +627,6 @@ int main() {
 
         // read reference word
         ref_word = (char *) malloc(sizeof(char) * (k+1));
-        // scanf_return = scanf("%s", ref_word);
         wordHandler(ref_word);
 
         // read number n of words
@@ -529,7 +646,8 @@ int main() {
             } else if (filtered_flag == true) {
                 if (return_code == 2) {
                     comp_word = 0;
-                    banWord(root, *cstr);
+                    setAllNotApplied(cstr);
+                    banWord(root, cstr);
                     filtered_flag = false;
                 } else {
                     insert(root, new_word);
@@ -538,7 +656,7 @@ int main() {
                 if (search(root, new_word) != NULL) {
                     print_flag = compare(ref_word, new_word);
                     comp_word = 0;
-                    banWord(root, *cstr);
+                    banWord(root, cstr);
                     if (print_flag) {
                         // compWordCount = printCompWord(root, false);
                         printf("%d\n", comp_word);
@@ -560,12 +678,13 @@ int main() {
         // freeing memory
 
 
-        freeBST();
+        freeBST(cstr);
         free(ref_word);
         free(visited);
         free(result);
         free(is_present);
         free(not_present);
+        cstr = NULL;
         visited = NULL;
         result = NULL;
         is_present = not_present = NULL;
