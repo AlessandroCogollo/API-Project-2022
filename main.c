@@ -101,6 +101,23 @@ int lookUpFunction(char symbol) {
     return value;
 }
 
+char inverseLookUp(int value) {
+    char temp = (char) value;
+    if (value >= 0 && value <= 25) {
+        value;
+    } else if (value >= 97 && value <= 122) {
+        value = value - 71;
+    } else if (value >= 48 && value <= 57) {
+        value = value + 4;
+    } else if (value == 45) {
+        // char: -
+        value = 62;
+    } else if (value == 95) {
+        value = 63;
+    }
+    return value;
+}
+
 struct constraint* isPresent(char symbol) {
     int value = lookUpFunction(symbol);
     if (cstr[value] != NULL) {
@@ -132,13 +149,15 @@ struct constraint *newConstraint(char symbol, int b, int min, int exac) {
 
 struct Trie {
     int isLeaf; // 1 quando il nodo è un nodo foglia
+    int heigth;
     bool isCompatible;
     struct Trie* character[LENGTH];
 };
 
-struct Trie* getNewTrieNode() {
+struct Trie* getNewTrieNode(int height) {
     struct Trie* node = (struct Trie*)malloc(sizeof(struct Trie));
     node->isLeaf = 0;
+    node->heigth = height;
     node->isCompatible = true;
     for (int i = 0; i < LENGTH; i++) {
         node->character[i] = NULL;
@@ -148,31 +167,32 @@ struct Trie* getNewTrieNode() {
 
 void insert(struct Trie *head, char* str) {
     struct Trie* curr = head;
+    int pos = 0;
     while (*str) {
         if (curr->character[lookUpFunction(*str)] == NULL) {
-            curr->character[lookUpFunction(*str)] = getNewTrieNode();
+            curr->character[lookUpFunction(*str)] = getNewTrieNode(pos);
         }
         curr = curr->character[lookUpFunction(*str)];
         str++;
+        pos++;
     }
     curr->isLeaf = 1;
 }
 
-void printFiltered(struct Trie* root, int pos) {
-    if(root == NULL)
+void printFiltered(struct Trie* node, int pos) {
+    if (node == NULL)
         return;
-    if(root->isLeaf == 1) {
+    if (node->isLeaf == 1) {
         printf("%s\n", word_array);
     }
-    // TODO: compatible?
-    for(int i = 0; i < LENGTH; i++) {
-        if(root->character[i] != NULL) {
-            if (root->isCompatible) {
+    for (int i = 0; i < LENGTH; i++) {
+        if (node->character[i] != NULL) {
+            if (node->character[i]->isCompatible) {
                 word_array[pos] = i + 'a';
-                printFiltered(root->character[i], pos+1);
+                printFiltered(node->character[i], pos+1);
             } else {
                 return;
-            };
+            }
         }
     }
 }
@@ -232,50 +252,19 @@ void freeBST() {
 
 bool checkComp(struct Trie *node, struct constraint * constraintNode) {
     int tmp_count = 0;
-    // if symbol is part of the word
-    if (constraintNode->belongs) {
-        for (int i = 0; i < k; i++) {
-            if (node->word[i] == constraintNode->symbol) {
-                tmp_count++;
-                if (constraintNode->not_present[i]) {
-                    node->compatible = false;
-                    return true;
-                }
-            }
-        }
-        if (constraintNode->exact_number > 0) {
-            if (tmp_count != constraintNode->exact_number) {
-                node->compatible = false;
-                return true;
-            }
-        } else {
-            if (tmp_count < constraintNode->min_number) {
-                node->compatible = false;
-                return true;
-            }
-        }
-    } else {
-        if (strchr(node->word, constraintNode->symbol) != NULL) {
-            node->compatible = false;
-            return true;
-        }
-    }
-    return false;
+    // TODO:
 }
 
 void banWord(struct Trie* node, struct constraint* constraintNode) {
     if (node == NULL)
         return;
     for (int i = 0; i < LENGTH; i++) {
-        if (node->character[i] != NULL) {
-            if (node->isCompatible) {
-                if (i != lookUpFunction(secure_word[i]) && secure_word[i] != '$') {
-                    node->isCompatible = false;
-                }
-                if (node->isCompatible) {
-                    checkComp(node, cstr[i]);
-                    banWord(node->character[i], constraintNode);
-                }
+        if (node->character[i] != NULL && node->character[i]->isCompatible) {
+            if (i != lookUpFunction(secure_word[node->character[i]->heigth]) && secure_word[node->character[i]->heigth] != '$') {
+                node->character[i]->isCompatible = false;
+            }
+            if (node->character[i]->isCompatible) {
+                checkComp(node->character[i], constraintNode);
             }
         }
     }
@@ -384,7 +373,7 @@ int main() {
     int n = 0, word_count, scanf_return, return_code;
     char *new_word, *ref_word;
     struct node * temp_ptr = NULL;
-    struct Trie* root = getNewTrieNode();
+    struct Trie* root = getNewTrieNode(0);
 
     comp_word = 0;
 
