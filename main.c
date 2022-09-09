@@ -14,6 +14,7 @@ bool * not_present;
 bool winner_flag = false;
 struct constraint* cstr;
 struct node* root;
+struct node* op_root;
 
 // -------------- UTILS ----------------
 
@@ -226,8 +227,6 @@ void constraintFixup(struct constraint* node, struct constraint* pt) {
     node->color = 0;
 }
 
-// TODO: fix RB-trees
-
 // --------------- BST structure -----------------
 
 struct node {
@@ -294,7 +293,6 @@ void freeWord(struct node* node) {
     if (node == NULL) return;
     freeWord(node->left);
     freeWord(node->right);
-    free(node->word);
     free(node);
 }
 
@@ -410,6 +408,40 @@ void freeBST(struct constraint* node) {
         free(node->not_present);
     }
     free(node);
+}
+
+struct node* minValueNode(struct node* node) {
+    struct node* current = node;
+    while (current && current->left != NULL)
+        current = current->left;
+    return current;
+}
+
+struct node* deleteNode(struct node* node, char * word) {
+    if (node == NULL)
+        return node;
+    if (strcmp(word, node->word) > 0)
+        node->left = deleteNode(node->left, word);
+    else if (strcmp(word, node->word) < 0)
+        node->right = deleteNode(node->right, word);
+    else {
+        if (node->left == NULL && node->right == NULL)
+            return NULL;
+        else if (node->left == NULL) {
+            struct node* temp = node->right;
+            free(node);
+            return temp;
+        }
+        else if (node->right == NULL) {
+            struct node* temp = node->left;
+            free(node);
+            return temp;
+        }
+        struct node* temp = minValueNode(node->right);
+        strcpy(node->word, temp->word);
+        node->right = deleteNode(node->right, temp->word);
+    }
+    return node;
 }
 
 bool checkComp(struct node *node, struct constraint * constraintNode, bool flag) {
@@ -531,13 +563,23 @@ void banWord(struct node* node, struct constraint* constraintNode, bool flag) {
     }
 }
 
-void setAllApplied (struct constraint * root) {
-    if (root != NULL) {
-        setAllApplied(root->left);
-        if (!root->applied) {
-            root->applied = true;
+void delete (struct node * node) {
+    if (node != NULL) {
+        delete(node->left);
+        if (!node->compatible) {
+            op_root = deleteNode(op_root, node->word);
         }
-        setAllApplied(root->right);
+        delete(node->right);
+    }
+}
+
+void setAllApplied (struct constraint * node) {
+    if (node != NULL) {
+        setAllApplied(node->left);
+        if (!node->applied) {
+            node->applied = true;
+        }
+        setAllApplied(node->right);
     }
 }
 
@@ -647,6 +689,18 @@ bool compare(char reference[], char new[]) {
     }
 }
 
+struct node* cloneBinaryTree(struct node* node){
+    if(node == NULL)
+        return NULL;
+    /* create a copy of root node */
+    struct node * tmp_node = newNode(node->word);
+    /* Recursively create clone of left and right sub tree */
+    tmp_node->left = cloneBinaryTree(node->left);
+    tmp_node->right = cloneBinaryTree(node->right);
+    /* Return root of cloned tree */
+    return tmp_node;
+}
+
 int main() {
     int n = 0, word_count, scanf_return, return_code;
     char *new_word, *ref_word;
@@ -681,6 +735,8 @@ int main() {
         not_present = (bool *) malloc(sizeof(bool) * (k));
         secure_word = (char *) malloc(sizeof(char) * k);
 
+        op_root = cloneBinaryTree(root);
+
         memset(secure_word, '$', k);
 
         word_count = 0;
@@ -703,27 +759,29 @@ int main() {
             return_code = wordHandler(new_word);
             // scanf_return = scanf("%s", new_word);
             if (return_code == 3) {
-                printFiltered(root);
+                printFiltered(op_root);
             } else if (return_code == 1 && !filtered_flag) {
                 filtered_flag = true;
             } else if (filtered_flag == true) {
                 if (return_code == 2) {
                     comp_word = 0;
-                    // TODO: applica solo alle nuove parole
-                    banWord(root, cstr, true);
+                    // applica solo alle nuove parole
+                    banWord(op_root, cstr, true);
                     setAllApplied(cstr);
+                    delete(op_root);
                     filtered_flag = false;
                 } else {
                     insert(root, new_word);
+                    insert(op_root, new_word);
                 }
             } else {
                 if (search(root, new_word) != NULL) {
                     print_flag = compare(ref_word, new_word);
-                    // TODO: applica solo i nuovi vincoli
+                    // applica solo i nuovi vincoli
                     if (print_flag) {
                         comp_word = 0;
-                        banWord(root, cstr, false);
-                        // setAllApplied(cstr);
+                        banWord(op_root, cstr, false);
+                        // delete(op_root);
                         printf("%d\n", comp_word);
                     } else {
                         printf("ok\n");
@@ -741,10 +799,12 @@ int main() {
         }
 
         freeBST(cstr);
+        freeWord(op_root);
         free(visited);
         free(result);
         free(is_present);
         free(not_present);
+        op_root = NULL;
         cstr = NULL;
         visited = NULL;
         result = NULL;
@@ -776,7 +836,6 @@ int main() {
         // TODO: deallocate memory
         scanf_return = scanf_return + 1;
         comp_word = 0;
-        setAllComp(root);
 
     } while (return_code != 5);
 }
