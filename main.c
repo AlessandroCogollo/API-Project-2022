@@ -158,6 +158,16 @@ void resetList(struct nodeLIST ** root) {
     * root = NULL;
 }
 
+struct nodeBST * searchBST(struct nodeBST *node, char *word) {
+    if (node == NULL || strcmp(word, node->word) == 0) {
+        return node;
+    } else if (strcmp(word, node->word) < 0) {
+        return searchBST(node->left, word);
+    } else {
+        return searchBST(node->right, word);
+    }
+}
+
 // -------------- UTILS ----------------
 
 bool counter(const char * wordRef, const char wordP[], int pos, int k) {
@@ -235,13 +245,14 @@ int charCounter(const char * word, char letter, int k) {
 
 void banwords(struct nodeLIST ** root, constraintCell * constraints, int k) {
     int charCount;
-    struct nodeLIST *temp = *root, *prec = *root;
+    struct nodeLIST *temp = *root, *prec;
     constraintCell tempConstraint;
     bool to_ban_flag;
     do {
         to_ban_flag = false;
         for (int i = 0; i < k && !to_ban_flag; i++) {
             tempConstraint = constraints[constraintMapper(temp->word[i])];
+            // printf("Word: %s - Letter: %c - Cardinality: %d\n", temp->word, temp->word[i], tempConstraint.cardinality);
             if (tempConstraint.cardinality == -2) {
                 // char doesn't belong to the word
                 to_ban_flag = true;
@@ -266,19 +277,21 @@ void banwords(struct nodeLIST ** root, constraintCell * constraints, int k) {
             }
         }
         if (to_ban_flag) {
-            // delete node
-            if (temp == *root) {
-                *root = temp->next;
-                prec = *root;
+            if (*root == temp) {
+                *root = (*root)->next;
+                free(temp);
+                temp = *root;
             } else {
                 prec->next = temp->next;
+                free(temp);
+                temp = prec->next;
             }
-            free(temp);
             quantity--;
+        } else {
+            prec = temp;
+            temp = temp->next;
         }
-        temp = prec->next->next;
-        prec = prec->next;
-    } while (temp->next != NULL);
+    } while (temp != NULL);
 }
 
 int getWord(char *temp_word, int length) {
@@ -322,6 +335,8 @@ int main() {
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
+    // printf("%d", constraintMapper('l'));
+
     // acquire length:
     k = (int) getchar_unlocked() - 48;
     getchar_unlocked();
@@ -341,11 +356,12 @@ int main() {
 
     resetConstraints(constraints, k, true);
 
+    // define reference word:
+    reference_word = (char *) malloc(sizeof(char) * k);
+    result_word = (char *) malloc(sizeof(char) * k);
+
     // new game begins
     do {
-        // acquire reference word:
-        reference_word = (char *) malloc(sizeof(char) * k);
-        result_word = (char *) malloc(sizeof(char) * k);
         getWord(reference_word, k);
 
         // acquire tries quantity
@@ -362,45 +378,36 @@ int main() {
         do {
             temp_word = (char *) malloc(sizeof(char) * k);
             code = getWord(temp_word, k);
-            switch (code) {
-                case 0:
-                    if (filtered_flag) {
-                        quantity++;
-                        insertNodeBST(rootBST, temp_word);
-                        insertNode(&rootLIST, temp_word);
-                    } else {
-                        if (searchList(rootLIST, temp_word) != NULL) {
-                            winner_flag = compare(reference_word, temp_word, result_word, constraints, k);
-                            banwords(&rootLIST, constraints, k);
-                            if (!winner_flag) {
-                                printf("%s\n%d\n", result_word, quantity);
-                            } else {
-                                printf("ok\n");
-                            }
-                            i++;
+            if (code == 0) {
+                if (filtered_flag) {
+                    quantity++;
+                    insertNodeBST(rootBST, temp_word);
+                    insertNode(&rootLIST, temp_word);
+                } else {
+                    if (searchBST(rootBST, temp_word) != NULL) {
+                        winner_flag = compare(reference_word, temp_word, result_word, constraints, k);
+                        banwords(&rootLIST, constraints, k);
+                        if (!winner_flag) {
+                            printf("%s\n%d\n", result_word, quantity);
                         } else {
-                            printf("not_exists\n");
+                            printf("ok\n");
                         }
+                        i++;
+                    } else {
+                        printf("not_exists\n");
                     }
-                    break;
-                case 1:
-                    break;
-                case 2:
-                    printList(rootLIST);
-                    break;
-                case 3:
-                    filtered_flag = true;
-                    break;
-                case 4:
-                    filtered_flag = false;
-                    break;
-                default:
-                    break;
+                }
+            } else if (code == 2) {
+                printList(rootLIST);
+            } else if (code == 3) {
+                filtered_flag = true;
+            } else if (code == 4) {
+                filtered_flag = false;
             }
         } while (i < n && !winner_flag && code != -1);
 
-        if (!winner_flag) {
-            printf("ko");
+        if (!winner_flag && code != -1) {
+            printf("ko\n");
         }
 
         do {
