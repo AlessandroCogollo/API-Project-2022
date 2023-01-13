@@ -345,7 +345,7 @@ int getWord(char *temp_word, int length) {
 
 int main() {
     bool winner_flag, filtered_flag;
-    int i, k, n, code;
+    int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootBST = NULL;
     struct nodeLIST* rootLIST = NULL;
@@ -384,8 +384,8 @@ int main() {
         getWord(reference_word, k);
 
         // acquire tries quantity
-        n = (int) getchar_unlocked() - 48;
-        getchar_unlocked();
+        rc = scanf("%d\n", &n);
+        rc = rc + 1;
 
         // generate new list
         quantity = 0;
