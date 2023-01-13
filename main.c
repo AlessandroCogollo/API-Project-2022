@@ -70,10 +70,10 @@ struct nodeLIST * newNodeList(char *word) {
 
 void printList (struct nodeLIST * node) {
     struct nodeLIST *temp = node;
-    do {
+    while (temp != NULL) {
         printf("%s\n", temp->word);
         temp = temp->next;
-    } while (temp != NULL);
+    }
 }
 
 struct nodeLIST * searchList (struct nodeLIST * node, char * word) {
@@ -192,13 +192,14 @@ bool counter(const char * wordRef, const char wordP[], int pos, int k) {
     }
 }
 
-bool compare(char *ref_word, char *new_word, char *result_word, constraintCell *cArr, int length) {
+bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
     int val;
     bool exists, win_flag = true;
     for (int i = 0; i < length; i++) {
         val = constraintMapper(new_word[i]);
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
+            certain_word[i] = new_word[i];
             cArr[val].presence[i] = 1;
             if (cArr[val].cardinality < 0) {
                 cArr[val].cardinality = 1;
@@ -225,6 +226,11 @@ bool compare(char *ref_word, char *new_word, char *result_word, constraintCell *
                 }
             } else {
                 result_word[i] = '|';
+                int z = 0;
+                while (presence_needed[z] != '*' && z < length) {
+                    z++;
+                }
+                presence_needed[z] = new_word[i];
                 cArr[val].presence[i] = -1;
             }
             win_flag = false;
@@ -243,13 +249,23 @@ int charCounter(const char * word, char letter, int k) {
     return temp_count;
 }
 
-void banwords(struct nodeLIST ** root, constraintCell * constraints, int k) {
+void banwords(struct nodeLIST ** root, const char * certain_word, const char * presence_needed, constraintCell * constraints, int k) {
     int charCount;
-    struct nodeLIST *temp = *root, *prec;
+    struct nodeLIST *temp = *root, *prec = NULL;
     constraintCell tempConstraint;
     bool to_ban_flag;
-    do {
+    while (temp != NULL) {
         to_ban_flag = false;
+        for (int i = 0; i < k && !to_ban_flag; i++) {
+            if (certain_word[i] != '*' && certain_word[i] != temp->word[i]) {
+                to_ban_flag = true;
+            }
+        }
+        for (int i = 0; i < k && !to_ban_flag; i++) {
+            if (presence_needed[i] != '*'  && strchr(temp->word, presence_needed[i]) == NULL) {
+                to_ban_flag = true;
+            }
+        }
         for (int i = 0; i < k && !to_ban_flag; i++) {
             tempConstraint = constraints[constraintMapper(temp->word[i])];
             // printf("Word: %s - Letter: %c - Cardinality: %d\n", temp->word, temp->word[i], tempConstraint.cardinality);
@@ -257,6 +273,7 @@ void banwords(struct nodeLIST ** root, constraintCell * constraints, int k) {
                 // char doesn't belong to the word
                 to_ban_flag = true;
             } else {
+                // TODO: fix checks below
                 // char belongs to the word
                 if (tempConstraint.presence[i] == -1) {
                     // char belongs, but is not in [i] position
@@ -291,7 +308,7 @@ void banwords(struct nodeLIST ** root, constraintCell * constraints, int k) {
             prec = temp;
             temp = temp->next;
         }
-    } while (temp != NULL);
+    }
 }
 
 int getWord(char *temp_word, int length) {
@@ -329,7 +346,7 @@ int getWord(char *temp_word, int length) {
 int main() {
     bool winner_flag, filtered_flag;
     int i, k, n, code;
-    char *temp_word, *reference_word, *result_word;
+    char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootBST = NULL;
     struct nodeLIST* rootLIST = NULL;
     struct nodeLIST* headLIST = NULL;
@@ -359,6 +376,8 @@ int main() {
     // define reference word:
     reference_word = (char *) malloc(sizeof(char) * k);
     result_word = (char *) malloc(sizeof(char) * k);
+    certain_word = (char *) malloc(sizeof(char) * k);
+    presences_needed = (char *) malloc(sizeof(char) * k);
 
     // new game begins
     do {
@@ -371,6 +390,12 @@ int main() {
         // generate new list
         quantity = 0;
         newList(rootBST, &rootLIST, &headLIST);
+
+        // TODO: change this below
+        for (int cont = 0; cont < k; cont++) {
+            certain_word[cont] = '*';
+            presences_needed[cont] = '*';
+        }
 
         i = 0;
         winner_flag = filtered_flag = false;
@@ -385,8 +410,8 @@ int main() {
                     insertNode(&rootLIST, temp_word);
                 } else {
                     if (searchBST(rootBST, temp_word) != NULL) {
-                        winner_flag = compare(reference_word, temp_word, result_word, constraints, k);
-                        banwords(&rootLIST, constraints, k);
+                        winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
+                        banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                         if (!winner_flag) {
                             printf("%s\n%d\n", result_word, quantity);
                         } else {
@@ -403,6 +428,7 @@ int main() {
                 filtered_flag = true;
             } else if (code == 4) {
                 filtered_flag = false;
+                banwords(&rootLIST, certain_word, presences_needed, constraints, k);
             }
         } while (i < n && !winner_flag && code != -1);
 
@@ -428,6 +454,7 @@ int main() {
                     break;
                 case 4:
                     filtered_flag = false;
+                    banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                     break;
                 default:
                     break;
