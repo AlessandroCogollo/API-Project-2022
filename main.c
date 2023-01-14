@@ -287,12 +287,13 @@ void banwords(struct nodeLIST ** root, const char * certain_word, const char * p
                     }
                 } else {
                     // char belongs, but its cardinality is different from min number
-                    if (tempConstraint.cardinality > 0 && tempConstraint.cardinality < charCount) {
+                    if (tempConstraint.cardinality > 0 && tempConstraint.cardinality > charCount) {
                         to_ban_flag = true;
                     }
                 }
             }
         }
+        //delete temp node
         if (to_ban_flag) {
             if (*root == temp) {
                 *root = (*root)->next;
