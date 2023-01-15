@@ -170,7 +170,7 @@ struct nodeBST * searchBST(struct nodeBST *node, char *word) {
 
 // -------------- UTILS ----------------
 
-bool counter(const char * wordRef, const char wordP[], int pos, int k) {
+int counter(const char * wordRef, const char wordP[], int pos, int k) {
     int n = 0, c = 0, d = 0;
     for (int i = k; i >= 0; i--) {
         if (wordRef[i] == wordP[pos]) {
@@ -186,9 +186,37 @@ bool counter(const char * wordRef, const char wordP[], int pos, int k) {
         }
     }
     if (d >= (n-c)) {
-        return true;
+        return d;
     } else {
-        return false;
+        return -1;
+    }
+}
+
+// TODO: speed this up
+void updateMinCardinality(char *ref_word, char *new_word, char *result_word, char *certain_word, constraintCell *cArr) {
+    int counter, val;
+    bool incr_flag;
+    for (int i = 0; i < strlen(ref_word); i++) {
+        incr_flag = true;
+        counter = 0;
+        val = constraintMapper(new_word[i]);
+        for (int j = 0; j < strlen(ref_word); j++) {
+            if (new_word[j] == new_word[i]) {
+                if (result_word[j] == '/' && cArr[val].presence > 0) {
+                    cArr[val].exact_number = true;
+                } else if (result_word[j] == '+') {
+                    counter++;
+                } else {
+                    if (incr_flag) {
+                        counter++;
+                        incr_flag = false;
+                    }
+                }
+            }
+        }
+        if (counter > cArr[val].cardinality) {
+            cArr[val].cardinality = counter;
+        }
     }
 }
 
@@ -197,19 +225,11 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
     bool exists, win_flag = true;
     for (int i = 0; i < length; i++) {
         val = constraintMapper(new_word[i]);
+        // TODO: copy cArr[val] in a temp struct
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
             certain_word[i] = new_word[i];
             cArr[val].presence[i] = 1;
-            if (cArr[val].cardinality < 0) {
-                cArr[val].cardinality = 1;
-            } else {
-                for (int j = 0; j < length; j++) {
-                    if (cArr[val].presence[j] > 1) {
-                        cArr[val].cardinality++;
-                    }
-                }
-            }
         } else {
             exists = false;
             for (int j = 0; j < length; j++) {
@@ -217,7 +237,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                     exists = true;
                 }
             }
-            if (!exists || counter(ref_word, new_word, i, length)) {
+            if (!exists || counter(ref_word, new_word, i, length) >= 0) {
                 result_word[i] = '/';
                 if (cArr[constraintMapper(new_word[i])].cardinality != -1) {
                     cArr[val].exact_number = true;
@@ -226,16 +246,19 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                 }
             } else {
                 result_word[i] = '|';
-                int z = 0;
-                while (presence_needed[z] != '*' && z < length) {
-                    z++;
+                if (strchr(presence_needed, new_word[i]) == NULL) {
+                    int z = 0;
+                    while (presence_needed[z] != '*' && z < length) {
+                        z++;
+                    }
+                    presence_needed[z] = new_word[i];
                 }
-                presence_needed[z] = new_word[i];
                 cArr[val].presence[i] = -1;
             }
             win_flag = false;
         }
     }
+    updateMinCardinality(ref_word, new_word, result_word, certain_word, cArr);
     return win_flag;
 }
 
@@ -283,11 +306,14 @@ void banwords(struct nodeLIST ** root, const char * certain_word, const char * p
                 if (tempConstraint.exact_number) {
                     // char belongs, but its exact number differs
                     if (tempConstraint.cardinality != charCount) {
+                        // printf("Banned because of exact number\n");
                         to_ban_flag = true;
                     }
                 } else {
                     // char belongs, but its cardinality is different from min number
                     if (tempConstraint.cardinality > 0 && tempConstraint.cardinality > charCount) {
+                        // printf("Banned because of min number\n");
+                        // printf("Word: %s, Char: %c, Min Number: %d\n", temp->word, temp->word[i], tempConstraint.cardinality);
                         to_ban_flag = true;
                     }
                 }
