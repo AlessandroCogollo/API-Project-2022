@@ -76,19 +76,6 @@ void printList (struct nodeLIST * node) {
     }
 }
 
-struct nodeLIST * searchList (struct nodeLIST * node, char * word) {
-    struct nodeLIST *temp = node;
-    int ret_code;
-    do {
-        ret_code = strcmp(temp->word, word);
-        if (ret_code == 0) {
-            return temp;
-        }
-        temp = temp->next;
-    } while (temp != NULL && ret_code < 0);
-    return NULL;
-}
-
 // TODO: change this below, taken from the internet
 void insertNode(struct nodeLIST ** head_ref, char * word) {
     struct nodeLIST * temp = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
@@ -193,7 +180,7 @@ int counter(const char * wordRef, const char wordP[], int pos, int k) {
 }
 
 // TODO: speed this up
-void updateMinCardinality(char *ref_word, char *new_word, char *result_word, char *certain_word, constraintCell *cArr) {
+void updateMinCardinality(char *ref_word, char *new_word, char const *result_word, char *certain_word, constraintCell *cArr) {
     int counter, val;
     bool incr_flag;
     for (int i = 0; i < strlen(ref_word); i++) {
@@ -217,25 +204,18 @@ void updateMinCardinality(char *ref_word, char *new_word, char *result_word, cha
         if (counter > cArr[val].cardinality) {
             cArr[val].cardinality = counter;
         }
-        if (val == 38) {
-            // printf("Min Number of 'm' is: %d\n", cArr[val].cardinality);
-            if (cArr[val].exact_number) {
-                // printf("Exact number is set\n");
-            }
-        }
     }
 }
 
 bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
-    int val;
     bool exists, win_flag = true;
+    constraintCell tempArrCell;
     for (int i = 0; i < length; i++) {
-        val = constraintMapper(new_word[i]);
-        // TODO: copy cArr[val] in a temp struct
+        tempArrCell = cArr[constraintMapper(new_word[i])];
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
             certain_word[i] = new_word[i];
-            cArr[val].presence[i] = 1;
+            tempArrCell.presence[i] = 1;
         } else {
             exists = false;
             for (int j = 0; j < length; j++) {
@@ -245,11 +225,11 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
             }
             if (!exists || counter(ref_word, new_word, i, length) >= 0) {
                 result_word[i] = '/';
-                cArr[constraintMapper(new_word[i])].presence[i] = -1;
-                if (cArr[constraintMapper(new_word[i])].cardinality != -1) {
-                    cArr[val].exact_number = true;
+                tempArrCell.presence[i] = -1;
+                if (tempArrCell.cardinality != -1) {
+                    tempArrCell.exact_number = true;
                 } else {
-                    cArr[val].cardinality = -2;
+                    tempArrCell.cardinality = -2;
                 }
             } else {
                 result_word[i] = '|';
@@ -260,7 +240,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                     }
                     presence_needed[z] = new_word[i];
                 }
-                cArr[val].presence[i] = -1;
+                tempArrCell.presence[i] = -1;
             }
             win_flag = false;
         }
@@ -303,7 +283,6 @@ void banwords(struct nodeLIST ** root, const char * certain_word, const char * p
                 // char doesn't belong to the word
                 to_ban_flag = true;
             } else {
-                // TODO: fix checks below
                 // char belongs to the word
                 if (tempConstraint.presence[i] == -1) {
                     // char belongs, but is not in [i] position
@@ -357,20 +336,21 @@ int getWord(char *temp_word, int length) {
             return -1;
         }
     } while (temp != '\n');
+
     if (temp_word[0] == '+') {
-        switch (temp_word[12]) {
+        temp = temp_word[12];
+        // memset(temp_word,0,strlen(temp_word));
+        switch (temp) {
             case 't': // +nuova_partita
-                memset(temp_word,0,strlen(temp_word));
                 return 1;
             case 'r': // +stampa_filtrate
-                memset(temp_word,0,strlen(temp_word));
                 return 2;
             case 'n': // +inserisci_inizio
-                memset(temp_word,0,strlen(temp_word));
                 return 3;
             case 'i': // +inserisci_fine
-                memset(temp_word,0,strlen(temp_word));
                 return 4;
+            default:
+                return -1;
         }
     }
     temp_word[length] = '\0';
@@ -378,7 +358,7 @@ int getWord(char *temp_word, int length) {
 }
 
 int main() {
-    bool winner_flag, filtered_flag;
+    bool winner_flag, filtered_flag, new_insertion_flag;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootBST = NULL;
@@ -413,8 +393,11 @@ int main() {
     certain_word = (char *) malloc(sizeof(char) * k);
     presences_needed = (char *) malloc(sizeof(char) * k);
 
+    new_insertion_flag = false;
+
     // new game begins
     do {
+
         getWord(reference_word, k);
 
         // acquire tries quantity
@@ -425,11 +408,9 @@ int main() {
         quantity = 0;
         newList(rootBST, &rootLIST, &headLIST);
 
-        // TODO: change this below
-        for (int cont = 0; cont < k; cont++) {
-            certain_word[cont] = '*';
-            presences_needed[cont] = '*';
-        }
+        // set certain_word & presences_needed to '*'
+        memset(certain_word, '*', k);
+        memset(presences_needed, '*', k);
 
         i = 0;
         winner_flag = filtered_flag = false;
@@ -444,6 +425,7 @@ int main() {
                     insertNode(&rootLIST, temp_word);
                 } else {
                     if (searchBST(rootBST, temp_word) != NULL) {
+                        new_insertion_flag = false;
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
                         banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                         if (!winner_flag) {
@@ -457,12 +439,17 @@ int main() {
                     }
                 }
             } else if (code == 2) {
+                if (new_insertion_flag) {
+                    new_insertion_flag = false;
+                    banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                }
                 printList(rootLIST);
             } else if (code == 3) {
                 filtered_flag = true;
             } else if (code == 4) {
                 filtered_flag = false;
-                banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                new_insertion_flag = true;
+                // banwords(&rootLIST, certain_word, presences_needed, constraints, k);
             }
         } while (i < n && !winner_flag && code != -1);
 
@@ -488,7 +475,8 @@ int main() {
                     break;
                 case 4:
                     filtered_flag = false;
-                    banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                    new_insertion_flag = true;
+                    // banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                     break;
                 default:
                     break;
