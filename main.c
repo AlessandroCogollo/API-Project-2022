@@ -217,6 +217,12 @@ void updateMinCardinality(char *ref_word, char *new_word, char *result_word, cha
         if (counter > cArr[val].cardinality) {
             cArr[val].cardinality = counter;
         }
+        if (val == 38) {
+            // printf("Min Number of 'm' is: %d\n", cArr[val].cardinality);
+            if (cArr[val].exact_number) {
+                // printf("Exact number is set\n");
+            }
+        }
     }
 }
 
@@ -239,6 +245,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
             }
             if (!exists || counter(ref_word, new_word, i, length) >= 0) {
                 result_word[i] = '/';
+                cArr[constraintMapper(new_word[i])].presence[i] = -1;
                 if (cArr[constraintMapper(new_word[i])].cardinality != -1) {
                     cArr[val].exact_number = true;
                 } else {
@@ -379,7 +386,7 @@ int main() {
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
-    // printf("%d", constraintMapper('l'));
+    // printf("%d", constraintMapper('m'));
 
     // acquire length:
     k = (int) getchar_unlocked() - 48;
