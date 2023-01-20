@@ -261,11 +261,14 @@ int charCounter(const char * word, char letter, int k) {
 
 void banwords(struct nodeLIST ** root, const char * certain_word, const char * presence_needed, constraintCell * constraints, int k) {
     int charCount;
+    // TODO: add this, to not repeat checks on already visited chars
+    char * visited = (char *) malloc (sizeof(char) * k);
     struct nodeLIST *temp = *root, *prec = NULL;
     constraintCell tempConstraint;
     bool to_ban_flag;
     while (temp != NULL) {
         to_ban_flag = false;
+        memset(visited, '\0', k);
         for (int i = 0; i < k && !to_ban_flag; i++) {
             if (certain_word[i] != '*') {
                 if (certain_word[i] != temp->word[i]) {
