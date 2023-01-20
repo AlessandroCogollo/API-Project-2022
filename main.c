@@ -180,7 +180,7 @@ int counter(const char * wordRef, const char wordP[], int pos, int k) {
 }
 
 // TODO: speed this up
-void updateMinCardinality(char *ref_word, char *new_word, char const *result_word, char *certain_word, constraintCell *cArr) {
+void updateMinCardinality(char *ref_word, char *new_word, char const *result_word, constraintCell *cArr) {
     int counter, val;
     bool incr_flag;
     for (int i = 0; i < strlen(ref_word); i++) {
@@ -245,7 +245,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
             win_flag = false;
         }
     }
-    updateMinCardinality(ref_word, new_word, result_word, certain_word, cArr);
+    updateMinCardinality(ref_word, new_word, result_word, cArr);
     return win_flag;
 }
 
@@ -267,40 +267,37 @@ void banwords(struct nodeLIST ** root, const char * certain_word, const char * p
     while (temp != NULL) {
         to_ban_flag = false;
         for (int i = 0; i < k && !to_ban_flag; i++) {
-            if (certain_word[i] != '*' && certain_word[i] != temp->word[i]) {
-                to_ban_flag = true;
+            if (certain_word[i] != '*') {
+                if (certain_word[i] != temp->word[i]) {
+                    to_ban_flag = true;
+                }
             }
-        }
-        for (int i = 0; i < k && !to_ban_flag; i++) {
-            if (presence_needed[i] != '*'  && strchr(temp->word, presence_needed[i]) == NULL) {
-                to_ban_flag = true;
+            if (!to_ban_flag) {
+                if (presence_needed[i] != '*') {
+                    if (strchr(temp->word, presence_needed[i]) == NULL) {
+                        to_ban_flag = true;
+                    }
+                }
             }
         }
         for (int i = 0; i < k && !to_ban_flag; i++) {
             tempConstraint = constraints[constraintMapper(temp->word[i])];
-            // printf("Word: %s - Letter: %c - Cardinality: %d\n", temp->word, temp->word[i], tempConstraint.cardinality);
             if (tempConstraint.cardinality == -2) {
-                // char doesn't belong to the word
                 to_ban_flag = true;
             } else {
-                // char belongs to the word
                 if (tempConstraint.presence[i] == -1) {
-                    // char belongs, but is not in [i] position
                     to_ban_flag = true;
                 }
-                charCount = charCounter(temp->word, temp->word[i], k);
-                if (tempConstraint.exact_number) {
-                    // char belongs, but its exact number differs
-                    if (tempConstraint.cardinality != charCount) {
-                        // printf("Banned because of exact number\n");
-                        to_ban_flag = true;
-                    }
-                } else {
-                    // char belongs, but its cardinality is different from min number
-                    if (tempConstraint.cardinality > 0 && tempConstraint.cardinality > charCount) {
-                        // printf("Banned because of min number\n");
-                        // printf("Word: %s, Char: %c, Min Number: %d\n", temp->word, temp->word[i], tempConstraint.cardinality);
-                        to_ban_flag = true;
+                if (!to_ban_flag) {
+                    charCount = charCounter(temp->word, temp->word[i], k);
+                    if (tempConstraint.exact_number) {
+                        if (tempConstraint.cardinality != charCount) {
+                            to_ban_flag = true;
+                        }
+                    } else {
+                        if (tempConstraint.cardinality > charCount) {
+                            to_ban_flag = true;
+                        }
                     }
                 }
             }
@@ -358,7 +355,7 @@ int getWord(char *temp_word, int length) {
 }
 
 int main() {
-    bool winner_flag, filtered_flag, new_insertion_flag;
+    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootBST = NULL;
@@ -366,9 +363,8 @@ int main() {
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
-    // printf("%d", constraintMapper('m'));
-
     // acquire length:
+    // TODO: might be needed to change this, since it acquires only one-digit numbers
     k = (int) getchar_unlocked() - 48;
     getchar_unlocked();
 
@@ -397,7 +393,6 @@ int main() {
 
     // new game begins
     do {
-
         getWord(reference_word, k);
 
         // acquire tries quantity
@@ -414,15 +409,20 @@ int main() {
 
         i = 0;
         winner_flag = filtered_flag = false;
+        used_word_flag = true;
 
         do {
-            temp_word = (char *) malloc(sizeof(char) * k);
+            if (used_word_flag) {
+                temp_word = (char *) malloc(sizeof(char) * k);
+                used_word_flag = false;
+            }
             code = getWord(temp_word, k);
             if (code == 0) {
                 if (filtered_flag) {
                     quantity++;
                     insertNodeBST(rootBST, temp_word);
                     insertNode(&rootLIST, temp_word);
+                    used_word_flag = true;
                 } else {
                     if (searchBST(rootBST, temp_word) != NULL) {
                         new_insertion_flag = false;
@@ -449,7 +449,6 @@ int main() {
             } else if (code == 4) {
                 filtered_flag = false;
                 new_insertion_flag = true;
-                // banwords(&rootLIST, certain_word, presences_needed, constraints, k);
             }
         } while (i < n && !winner_flag && code != -1);
 
@@ -457,12 +456,18 @@ int main() {
             printf("ko\n");
         }
 
+        used_word_flag = true;
+
         do {
-            temp_word = (char *) malloc(sizeof(char) * k);
+            if (used_word_flag) {
+                temp_word = (char *) malloc(sizeof(char) * k);
+                used_word_flag = false;
+            }
             code = getWord(temp_word, k);
             switch (code) {
                 case 0:
                     insertNodeBST(rootBST, temp_word);
+                    used_word_flag = true;
                     break;
                 case 1:
                     resetList(&rootLIST);
@@ -476,7 +481,6 @@ int main() {
                 case 4:
                     filtered_flag = false;
                     new_insertion_flag = true;
-                    // banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                     break;
                 default:
                     break;
