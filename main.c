@@ -6,8 +6,8 @@
 #include <malloc.h>
 
 // TODO: allocate whole pages to speed up
-
 // TODO: remove global variables
+
 int quantity, *modified_constraints;
 bool * visited;
 
@@ -59,12 +59,14 @@ int constraintMapper(char character) {
 
 struct nodeLIST {
     char *word;
+    bool good;
     struct nodeLIST *next;
 };
 
 struct nodeLIST * newNodeList(char *word) {
     struct nodeLIST * new_node;
     new_node = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
+    new_node->good = true;
     new_node->word = word;
     new_node->next = NULL;
     return new_node;
@@ -73,15 +75,19 @@ struct nodeLIST * newNodeList(char *word) {
 void printList (struct nodeLIST * node) {
     struct nodeLIST *temp = node;
     while (temp != NULL) {
-        printf("%s\n", temp->word);
+        if (temp->good) {
+            printf("%s\n", temp->word);
+        }
         temp = temp->next;
     }
 }
 
 // TODO: change this below, taken from the internet
+
 void insertNode(struct nodeLIST **root, char *word) {
     struct nodeLIST * temp = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
     temp->word = word;
+    temp->good = true;
 	if (*root == NULL || strcmp((*root)->word, word) > 0) {
 		temp->next = *root;
 		*root = temp;
@@ -95,14 +101,13 @@ void insertNode(struct nodeLIST **root, char *word) {
 	current->next = temp;
 }
 
-void resetList(struct nodeLIST ** root) {
-    struct nodeLIST * temp = *root, * succ;
+void resetList(struct nodeLIST * root) {
+    struct nodeLIST * temp = root;
     while (temp != NULL) {
-        succ = temp->next;
-        free(temp);
-        temp = succ;
+        quantity++;
+        temp->good = true;
+        temp = temp->next;
     }
-    * root = NULL;
 }
 
 // --------------- RB TREE -----------------
@@ -464,43 +469,27 @@ bool lightCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *c
     return false;
 }
 
-void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k, bool lightMode) {
+void banwords(struct nodeLIST * root, char * cw, char * pn, constraintCell * constraints, int k, bool lightMode) {
     // cw: certain_word, pn: presence_needed
-    struct nodeLIST *temp = *root, *prev = NULL;
+    struct nodeLIST *temp = root;
     while (temp != NULL) {
         //delete temp node
         if (lightMode) {
-            if (lightCheckBan(constraints, temp, cw, pn, k)) {
-                if (*root == temp) {
-                    *root = (*root)->next;
-                    free(temp);
-                    temp = *root;
-                } else {
-                    prev->next = temp->next;
-                    free(temp);
-                    temp = prev->next;
+            if (temp->good) {
+                if (lightCheckBan(constraints, temp, cw, pn, k)) {
+                    temp->good = false;
+                    quantity--;
                 }
-                quantity--;
-            } else {
-                prev = temp;
-                temp = temp->next;
             }
+            temp = temp->next;
         } else {
-            if (heavyCheckBan(constraints, temp, cw, pn, k)) {
-                if (*root == temp) {
-                    *root = (*root)->next;
-                    free(temp);
-                    temp = *root;
-                } else {
-                    prev->next = temp->next;
-                    free(temp);
-                    temp = prev->next;
+            if (temp->good) {
+                if (heavyCheckBan(constraints, temp, cw, pn, k)) {
+                    temp->good = false;
+                    quantity--;
                 }
-                quantity--;
-            } else {
-                prev = temp;
-                temp = temp->next;
             }
+            temp = temp->next;
         }
     }
 }
@@ -577,6 +566,10 @@ int main() {
 
     new_insertion_flag = false;
 
+    // generate new list
+    quantity = 0;
+    newList(rootRB, &rootLIST, &headLIST);
+
     // new game begins
     do {
         getWord(reference_word, k);
@@ -584,10 +577,6 @@ int main() {
         // acquire tries quantity
         rc = scanf("%d\n", &n);
         rc = rc + 1;
-
-        // generate new list
-        quantity = 0;
-        newList(rootRB, &rootLIST, &headLIST);
 
         // set certain_word & presences_needed to '*'
         for (int u = 0; u < k; u++) {
@@ -617,7 +606,7 @@ int main() {
                     if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
-                        banwords(&rootLIST, certain_word, presences_needed, constraints, k, light_mode);
+                        banwords(rootLIST, certain_word, presences_needed, constraints, k, light_mode);
                         if (light_mode == false) {
                             light_mode = true;
                         }
@@ -635,7 +624,7 @@ int main() {
                 if (new_insertion_flag) {
                     new_insertion_flag = false;
                     light_mode = false;
-                    banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
+                    banwords(rootLIST, certain_word, presences_needed, constraints, k, false);
                 }
                 printList(rootLIST);
             } else if (code == 3) {
@@ -662,10 +651,12 @@ int main() {
             switch (code) {
                 case 0:
                     insertNodeRB(rootRB, temp_word);
+                    insertNode(&rootLIST, temp_word);
                     used_word_flag = true;
                     break;
                 case 1:
-                    resetList(&rootLIST);
+                    quantity = 0;
+                    resetList(rootLIST);
                     resetConstraints(constraints, k, false);
                     break;
                 case 2:
