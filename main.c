@@ -7,7 +7,8 @@
 
 // TODO: allocate whole pages to speed up
 
-int quantity;
+// TODO: remove global variables
+int quantity, *modified_constraints;
 
 // ----------- CONSTRAINTS --------------
 
@@ -77,15 +78,15 @@ void printList (struct nodeLIST * node) {
 }
 
 // TODO: change this below, taken from the internet
-void insertNode(struct nodeLIST ** head_ref, char * word) {
+void insertNode(struct nodeLIST **root, char *word) {
     struct nodeLIST * temp = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
     temp->word = word;
-	if (*head_ref == NULL || strcmp((*head_ref)->word, word) > 0) {
-		temp->next = *head_ref;
-		*head_ref = temp;
+	if (*root == NULL || strcmp((*root)->word, word) > 0) {
+		temp->next = *root;
+		*root = temp;
 		return;
 	}
-    struct nodeLIST* current = *head_ref;
+    struct nodeLIST* current = *root;
 	while (current->next != NULL && strcmp(current->next->word, word) < 0)
 		current = current->next;
 
@@ -93,34 +94,122 @@ void insertNode(struct nodeLIST ** head_ref, char * word) {
 	current->next = temp;
 }
 
-// --------------- BST -----------------
+void resetList(struct nodeLIST ** root) {
+    struct nodeLIST * temp = *root, * succ;
+    while (temp != NULL) {
+        succ = temp->next;
+        free(temp);
+        temp = succ;
+    }
+    * root = NULL;
+}
 
-// TODO: change BST to RB-Tree
+// --------------- RB TREE -----------------
+// TODO: check if RB tree is working
 
-struct nodeBST {
+struct nodeRB {
     char *word;
-    struct nodeBST *left, *right;
+    bool red;
+    struct nodeRB *father, *left, *right;
 };
 
-struct nodeBST * newNodeBST(char *word) {
-    struct nodeBST * new_node;
-    new_node = (struct nodeBST *) malloc (sizeof (struct nodeBST));
+struct nodeRB * newNodeBST(char *word) {
+    struct nodeRB * new_node;
+    new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
+    new_node->red = true;
     new_node->word = word;
-    new_node->left = new_node->right = NULL;
+    new_node->left = new_node->right = new_node->father = NULL;
     return new_node;
 }
 
-struct nodeBST * insertNodeBST(struct nodeBST *node, char *word) {
+struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
     if (node == NULL)
         return newNodeBST(word);
-    if (strcmp(word, node->word) < 0)
-        node->left = insertNodeBST(node->left, word);
-    else if (strcmp(word, node->word) > 0)
-        node->right = insertNodeBST(node->right, word);
+    if (strcmp(word, node->word) < 0) {
+        node->left = insertNodeRB(node->left, word);
+        node->left->father = node;
+    } else if (strcmp(word, node->word) > 0) {
+        node->right = insertNodeRB(node->right, word);
+        node->right->father = node;
+    }
     return node;
 }
 
-void newList(struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head) {
+void rotateRBLeft(struct nodeRB *root, struct nodeRB *nodeX) {
+    struct nodeRB * nodeY = nodeX->right;
+    nodeX->right = nodeY->left;
+    if (nodeY->left != NULL)
+        nodeY->left->father = nodeX;
+    nodeY->father = nodeX->father;
+    if (nodeX->father == NULL) {
+        root = nodeY;
+    } else if (nodeX == nodeX->father->left) {
+        nodeX->father->left = nodeY;
+    } else {
+        nodeX->father->right = nodeY;
+    }
+    nodeY->left = nodeX;
+    nodeX->father = nodeY;
+}
+
+void rotateRBRight(struct nodeRB *root, struct nodeRB *nodeX) {
+    struct nodeRB * nodeY = nodeX->left;
+    nodeX->left = nodeY->right;
+    if (nodeY->right != NULL)
+        nodeY->right->father = nodeX;
+    nodeY->father = nodeX->father;
+    if (nodeX->father == NULL) {
+        root = nodeY;
+    } else if (nodeX == nodeX->father->right) {
+        nodeX->father->right = nodeY;
+    } else {
+        nodeX->father->left = nodeY;
+    }
+    nodeY->right = nodeX;
+    nodeX->father = nodeY;
+}
+
+void fixRBTree(struct nodeRB *root, struct nodeRB *node) {
+    struct nodeRB * temp;
+    while (node != root && node->father->red) {
+        if (node->father == node->father->father->left) {
+            temp = node->father->father->right;
+            if (temp->red) {
+                node->father->red = false;
+                temp->red = false;
+                temp->father->father->red = true;
+                node = node->father->father;
+            } else {
+                if (node == node->father->right) {
+                    node = node->father;
+                    rotateRBLeft(root, node);
+                }
+                node->father->red = false;
+                node->father->father->red = true;
+                rotateRBRight(root, node->father->father);
+            }
+        } else {
+            temp = node->father->father->left;
+            if (temp->red) {
+                node->father->red = false;
+                temp->red = false;
+                temp->father->father->red = true;
+                node = node->father->father;
+            } else {
+                if (node == node->father->left) {
+                    node = node->father;
+                    rotateRBRight(root, node);
+                }
+                node->father->red = false;
+                node->father->father->red = true;
+                rotateRBLeft(root, node->father->father);
+            }
+        }
+    }
+    root->red = false;
+}
+
+void newList(struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head) {
     if (node != NULL) {
         newList(node->left, root, head);
         if (*root == NULL) {
@@ -135,23 +224,13 @@ void newList(struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **hea
     }
 }
 
-void resetList(struct nodeLIST ** root) {
-    struct nodeLIST * temp = *root, * succ;
-    while (temp != NULL) {
-        succ = temp->next;
-        free(temp);
-        temp = succ;
-    }
-    * root = NULL;
-}
-
-struct nodeBST * searchBST(struct nodeBST *node, char *word) {
+struct nodeRB * searchRB(struct nodeRB *node, char *word) {
     if (node == NULL || strcmp(word, node->word) == 0) {
         return node;
     } else if (strcmp(word, node->word) < 0) {
-        return searchBST(node->left, word);
+        return searchRB(node->left, word);
     } else {
-        return searchBST(node->right, word);
+        return searchRB(node->right, word);
     }
 }
 
@@ -208,10 +287,21 @@ void updateMinCardinality(char *ref_word, char *new_word, char const *result_wor
 }
 
 bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
-    bool exists, win_flag = true;
+    int constraintValue;
+    bool exists, mod_flag, win_flag = true;
     constraintCell tempArrCell;
+    // TODO : modified constraints might be speeded up by setting a value only when actually modified
+    memset(modified_constraints, -1, length);
     for (int i = 0; i < length; i++) {
-        tempArrCell = cArr[constraintMapper(new_word[i])];
+        constraintValue = constraintMapper(new_word[i]);
+        tempArrCell = cArr[constraintValue];
+        mod_flag = true;
+        for (int r = 0; r < length && mod_flag; r++) {
+            if (modified_constraints[r] != -1) {
+                modified_constraints[r] = constraintValue;
+                mod_flag = false;
+            }
+        }
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
             certain_word[i] = new_word[i];
@@ -263,6 +353,7 @@ void banwords(struct nodeLIST ** root, const char * certain_word, const char * p
     int charCount;
     // TODO: add this, to not repeat checks on already visited chars
     char * visited = (char *) malloc (sizeof(char) * k);
+    // --------------------------------------------------------------
     struct nodeLIST *temp = *root, *prec = NULL;
     constraintCell tempConstraint;
     bool to_ban_flag;
@@ -361,29 +452,30 @@ int main() {
     bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
-    struct nodeBST* rootBST = NULL;
+    struct nodeRB* rootRB = NULL;
     struct nodeLIST* rootLIST = NULL;
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
     // acquire length:
     // TODO: might be needed to change this, since it acquires only one-digit numbers
-    k = (int) getchar_unlocked() - 48;
-    getchar_unlocked();
+    rc = scanf("%d\n", &k);
+    rc = rc + 1;
 
     // acquire words:
     do {
         temp_word = (char *) malloc(sizeof(char) * k);
         code = getWord(temp_word, k);
         if (code == 0) {
-            if (rootBST == NULL) {
-                rootBST = insertNodeBST(rootBST, temp_word);
+            if (rootRB == NULL) {
+                rootRB = insertNodeRB(rootRB, temp_word);
             } else {
-                insertNodeBST(rootBST, temp_word);
+                insertNodeRB(rootRB, temp_word);
             }
         }
     } while (code == 0);
 
+    // TODO: abilitate this -> fixRBTree(rootRB, rootRB);
     resetConstraints(constraints, k, true);
 
     // define reference word:
@@ -391,6 +483,7 @@ int main() {
     result_word = (char *) malloc(sizeof(char) * k);
     certain_word = (char *) malloc(sizeof(char) * k);
     presences_needed = (char *) malloc(sizeof(char) * k);
+    modified_constraints = (int *) malloc(sizeof(int) * k);
 
     new_insertion_flag = false;
 
@@ -404,7 +497,7 @@ int main() {
 
         // generate new list
         quantity = 0;
-        newList(rootBST, &rootLIST, &headLIST);
+        newList(rootRB, &rootLIST, &headLIST);
 
         // set certain_word & presences_needed to '*'
         memset(certain_word, '*', k);
@@ -417,17 +510,18 @@ int main() {
         do {
             if (used_word_flag) {
                 temp_word = (char *) malloc(sizeof(char) * k);
+                fixRBTree(rootRB, rootRB);
                 used_word_flag = false;
             }
             code = getWord(temp_word, k);
             if (code == 0) {
                 if (filtered_flag) {
                     quantity++;
-                    insertNodeBST(rootBST, temp_word);
+                    insertNodeRB(rootRB, temp_word);
                     insertNode(&rootLIST, temp_word);
                     used_word_flag = true;
                 } else {
-                    if (searchBST(rootBST, temp_word) != NULL) {
+                    if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
                         banwords(&rootLIST, certain_word, presences_needed, constraints, k);
@@ -464,12 +558,13 @@ int main() {
         do {
             if (used_word_flag) {
                 temp_word = (char *) malloc(sizeof(char) * k);
+                // TODO: abilitate this -> fixRBTree(rootRB, rootRB);
                 used_word_flag = false;
             }
             code = getWord(temp_word, k);
             switch (code) {
                 case 0:
-                    insertNodeBST(rootBST, temp_word);
+                    insertNodeRB(rootRB, temp_word);
                     used_word_flag = true;
                     break;
                 case 1:
