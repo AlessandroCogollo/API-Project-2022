@@ -288,20 +288,12 @@ void updateMinCardinality(char *ref_word, char *new_word, char const *result_wor
 
 bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
     int constraintValue;
-    bool exists, mod_flag, win_flag = true;
+    bool exists, win_flag = true;
     constraintCell tempArrCell;
     // TODO : modified constraints might be speeded up by setting a value only when actually modified
-    memset(modified_constraints, -1, length);
     for (int i = 0; i < length; i++) {
         constraintValue = constraintMapper(new_word[i]);
         tempArrCell = cArr[constraintValue];
-        mod_flag = true;
-        for (int r = 0; r < length && mod_flag; r++) {
-            if (modified_constraints[r] != -1) {
-                modified_constraints[r] = constraintValue;
-                mod_flag = false;
-            }
-        }
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
             certain_word[i] = new_word[i];
@@ -383,14 +375,24 @@ void banwords(struct nodeLIST ** root, const char * certain_word, const char * p
                     to_ban_flag = true;
                 }
                 if (!to_ban_flag) {
-                    charCount = charCounter(temp->word, temp->word[i], k);
-                    if (tempConstraint.exact_number) {
-                        if (tempConstraint.cardinality != charCount) {
-                            to_ban_flag = true;
+                    charCount = 0;
+                    for (int z = 0; z < k; z++) {
+                        if (temp->word[z] == temp->word[i]) {
+                            charCount++;
+                            if (tempConstraint.exact_number && tempConstraint.cardinality < charCount) {
+                                to_ban_flag = true;
+                            }
                         }
-                    } else {
-                        if (tempConstraint.cardinality > charCount) {
-                            to_ban_flag = true;
+                    }
+                    if (!to_ban_flag) {
+                        if (tempConstraint.exact_number) {
+                            if (tempConstraint.cardinality != charCount) {
+                                to_ban_flag = true;
+                            }
+                        } else {
+                            if (tempConstraint.cardinality > charCount) {
+                                to_ban_flag = true;
+                            }
                         }
                     }
                 }
@@ -510,7 +512,7 @@ int main() {
         do {
             if (used_word_flag) {
                 temp_word = (char *) malloc(sizeof(char) * k);
-                fixRBTree(rootRB, rootRB);
+                // abilitate this -> fixRBTree(rootRB, rootRB);
                 used_word_flag = false;
             }
             code = getWord(temp_word, k);
