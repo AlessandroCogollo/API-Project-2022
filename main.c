@@ -354,35 +354,40 @@ bool checkBan(constraintCell * constraints, struct nodeLIST * temp, char *cw, ch
                 stop_flag = true;
             }
         }
-        tempConstraint = constraints[constraintMapper(temp->word[i])];
-        if (tempConstraint.cardinality == -2) {
-            return true;
-        }
     }
 
+    bool * visited = (bool *) malloc (sizeof(bool) * k);
+    memset(visited, false, k);
+
     for (int i = 0; i < k; i++) {
-        tempConstraint = constraints[constraintMapper(temp->word[i])];
-        if (tempConstraint.presence[i] == -1) {
-            return true;
-        }
-        charCount = 0;
-        for (int z = 0; z < k; z++) {
-            if (temp->word[z] == temp->word[i]) {
-                charCount++;
-                if (tempConstraint.exact_number) {
-                    if (tempConstraint.cardinality < charCount) {
+        if (!visited[i]) {
+            tempConstraint = constraints[constraintMapper(temp->word[i])];
+            if (tempConstraint.cardinality == -2) {
+                return true;
+            }
+            charCount = 0;
+            for (int z = i; z < k; z++) {
+                if (temp->word[z] == temp->word[i]) {
+                    visited[z] = true;
+                    if (tempConstraint.presence[z] == -1) {
                         return true;
+                    }
+                    charCount++;
+                    if (tempConstraint.exact_number) {
+                        if (tempConstraint.cardinality < charCount) {
+                            return true;
+                        }
                     }
                 }
             }
-        }
-        if (tempConstraint.exact_number) {
-            if (tempConstraint.cardinality != charCount) {
-                return true;
-            }
-        } else {
             if (tempConstraint.cardinality > charCount) {
                 return true;
+            } else {
+                if (tempConstraint.exact_number) {
+                    if (tempConstraint.cardinality != charCount) {
+                        return true;
+                    }
+                }
             }
         }
     }
