@@ -510,7 +510,7 @@ int main() {
         do {
             if (used_word_flag) {
                 temp_word = (char *) malloc(sizeof(char) * k);
-                // TODO: activate this -> fixRBTree(rootRB, rootRB);
+                fixRBTree(rootRB, rootRB);
                 used_word_flag = false;
             }
             code = getWord(temp_word, k);
