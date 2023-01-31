@@ -8,7 +8,7 @@
 // TODO: allocate whole pages to speed up
 
 // TODO: remove global variables
-int quantity, *modified_constraints;
+int quantity;
 
 // ----------- CONSTRAINTS --------------
 
@@ -105,6 +105,7 @@ void resetList(struct nodeLIST ** root) {
 }
 
 // --------------- RB TREE -----------------
+
 // TODO: check if RB tree is working
 
 struct nodeRB {
@@ -316,11 +317,13 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
             } else {
                 result_word[i] = '|';
                 if (strchr(presence_needed, new_word[i]) == NULL) {
-                    int z = 0;
-                    while (presence_needed[z] != '*' && z < length) {
-                        z++;
+                    if (strchr(certain_word, new_word[i]) == NULL) {
+                        int z = 0;
+                        while (presence_needed[z] != '*' && z < length) {
+                            z++;
+                        }
+                        presence_needed[z] = new_word[i];
                     }
-                    presence_needed[z] = new_word[i];
                 }
                 tempArrCell.presence[i] = -1;
             }
@@ -331,87 +334,79 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
     return win_flag;
 }
 
-int charCounter(const char * word, char letter, int k) {
-    int temp_count = 0;
+bool checkBan(constraintCell * constraints, struct nodeLIST * temp, char *cw, char *pn, int k) {
+    int charCount;
+    constraintCell tempConstraint;
+    bool stop_flag;
+    stop_flag = false;
     for (int i = 0; i < k; i++) {
-        if (word[i] == letter) {
-            temp_count++;
+        if (cw[i] != '*') {
+            if (cw[i] != temp->word[i]) {
+                return true;
+            }
+        }
+        if (!stop_flag) {
+            if (pn[i] != '*') {
+                if (strchr(temp->word, pn[i]) == NULL) {
+                    return true;
+                }
+            } else {
+                stop_flag = true;
+            }
+        }
+        tempConstraint = constraints[constraintMapper(temp->word[i])];
+        if (tempConstraint.cardinality == -2) {
+            return true;
         }
     }
-    return temp_count;
+
+    for (int i = 0; i < k; i++) {
+        tempConstraint = constraints[constraintMapper(temp->word[i])];
+        if (tempConstraint.presence[i] == -1) {
+            return true;
+        }
+        charCount = 0;
+        for (int z = 0; z < k; z++) {
+            if (temp->word[z] == temp->word[i]) {
+                charCount++;
+                if (tempConstraint.exact_number) {
+                    if (tempConstraint.cardinality < charCount) {
+                        return true;
+                    }
+                }
+            }
+        }
+        if (tempConstraint.exact_number) {
+            if (tempConstraint.cardinality != charCount) {
+                return true;
+            }
+        } else {
+            if (tempConstraint.cardinality > charCount) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
-void banwords(struct nodeLIST ** root, const char * certain_word, const char * presence_needed, constraintCell * constraints, int k) {
-    int charCount;
-    // TODO: add this, to not repeat checks on already visited chars
-    char * visited = (char *) malloc (sizeof(char) * k);
-    // --------------------------------------------------------------
-    struct nodeLIST *temp = *root, *prec = NULL;
-    constraintCell tempConstraint;
-    bool to_ban_flag;
+void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k) {
+    // cw: certain_word, pn: presence_needed
+    struct nodeLIST *temp = *root, *prev = NULL;
     while (temp != NULL) {
-        to_ban_flag = false;
-        memset(visited, '\0', k);
-        for (int i = 0; i < k && !to_ban_flag; i++) {
-            if (certain_word[i] != '*') {
-                if (certain_word[i] != temp->word[i]) {
-                    to_ban_flag = true;
-                }
-            }
-            if (!to_ban_flag) {
-                if (presence_needed[i] != '*') {
-                    if (strchr(temp->word, presence_needed[i]) == NULL) {
-                        to_ban_flag = true;
-                    }
-                }
-            }
-        }
-        for (int i = 0; i < k && !to_ban_flag; i++) {
-            tempConstraint = constraints[constraintMapper(temp->word[i])];
-            if (tempConstraint.cardinality == -2) {
-                to_ban_flag = true;
-            } else {
-                if (tempConstraint.presence[i] == -1) {
-                    to_ban_flag = true;
-                }
-                if (!to_ban_flag) {
-                    charCount = 0;
-                    for (int z = 0; z < k; z++) {
-                        if (temp->word[z] == temp->word[i]) {
-                            charCount++;
-                            if (tempConstraint.exact_number && tempConstraint.cardinality < charCount) {
-                                to_ban_flag = true;
-                            }
-                        }
-                    }
-                    if (!to_ban_flag) {
-                        if (tempConstraint.exact_number) {
-                            if (tempConstraint.cardinality != charCount) {
-                                to_ban_flag = true;
-                            }
-                        } else {
-                            if (tempConstraint.cardinality > charCount) {
-                                to_ban_flag = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
         //delete temp node
-        if (to_ban_flag) {
+        if (checkBan(constraints, temp, cw, pn, k)) {
             if (*root == temp) {
                 *root = (*root)->next;
                 free(temp);
                 temp = *root;
             } else {
-                prec->next = temp->next;
+                prev->next = temp->next;
                 free(temp);
-                temp = prec->next;
+                temp = prev->next;
             }
             quantity--;
         } else {
-            prec = temp;
+            prev = temp;
             temp = temp->next;
         }
     }
@@ -485,7 +480,7 @@ int main() {
     result_word = (char *) malloc(sizeof(char) * k);
     certain_word = (char *) malloc(sizeof(char) * k);
     presences_needed = (char *) malloc(sizeof(char) * k);
-    modified_constraints = (int *) malloc(sizeof(int) * k);
+    // modified_constraints = (int *) malloc(sizeof(int) * k);
 
     new_insertion_flag = false;
 
@@ -502,8 +497,10 @@ int main() {
         newList(rootRB, &rootLIST, &headLIST);
 
         // set certain_word & presences_needed to '*'
-        memset(certain_word, '*', k);
-        memset(presences_needed, '*', k);
+        for (int u = 0; u < k; u++) {
+            certain_word[u] = '*';
+            presences_needed[u] = '*';
+        }
 
         i = 0;
         winner_flag = filtered_flag = false;
