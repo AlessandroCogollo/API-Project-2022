@@ -84,17 +84,14 @@ void printList (struct nodeLIST * node) {
 
 // TODO: change this below, taken from the internet
 
-void insertNode(struct nodeLIST **root, char *word) {
-    struct nodeLIST * temp = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
-    temp->word = word;
-    temp->good = true;
-	if (*root == NULL || strcmp((*root)->word, word) > 0) {
+void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
+	if (*root == NULL || strcmp((*root)->word, temp->word) > 0) {
 		temp->next = *root;
 		*root = temp;
 		return;
 	}
     struct nodeLIST* current = *root;
-	while (current->next != NULL && strcmp(current->next->word, word) < 0)
+	while (current->next != NULL && strcmp(current->next->word, temp->word) < 0)
 		current = current->next;
 
 	temp->next = current->next;
@@ -121,7 +118,7 @@ struct nodeRB {
     struct nodeRB *father, *left, *right;
 };
 
-struct nodeRB * newNodeBST(char *word) {
+struct nodeRB * newNodeRB(char *word) {
     struct nodeRB * new_node;
     new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
     new_node->red = true;
@@ -132,7 +129,7 @@ struct nodeRB * newNodeBST(char *word) {
 
 struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
     if (node == NULL)
-        return newNodeBST(word);
+        return newNodeRB(word);
     if (strcmp(word, node->word) < 0) {
         node->left = insertNodeRB(node->left, word);
         node->left->father = node;
@@ -621,7 +618,8 @@ int main() {
                 if (filtered_flag) {
                     quantity++;
                     insertNodeRB(rootRB, temp_word);
-                    insertNode(&rootLIST, temp_word);
+                    struct nodeLIST * tempNode = newNodeList(temp_word);
+                    insertNode(&rootLIST, tempNode);
                     used_word_flag = true;
                     light_mode = false;
                 } else {
@@ -673,7 +671,8 @@ int main() {
             switch (code) {
                 case 0:
                     insertNodeRB(rootRB, temp_word);
-                    insertNode(&rootLIST, temp_word);
+                    struct nodeLIST * tempNode = newNodeList(temp_word);
+                    insertNode(&rootLIST, tempNode);
                     used_word_flag = true;
                     break;
                 case 1:
