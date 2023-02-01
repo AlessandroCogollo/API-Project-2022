@@ -108,7 +108,6 @@ void resetList(struct nodeLIST ** root) {
     * root = NULL;
 }
 
-
 // -------------- UTILS ----------------
 
 int counter(const char * wordRef, const char wordP[], int pos, int k) {
@@ -635,10 +634,12 @@ int main() {
             code = getWord(temp_word, k);
             if (code == 0) {
                 if (filtered_flag) {
-                    quantity++;
                     insertNodeRB(rootRB, temp_word);
-                    struct nodeLIST * tempNode = newNodeList(temp_word);
-                    insertNode(&rootLIST, tempNode);
+                    if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
+                        quantity++;
+                        struct nodeLIST * tempNode = newNodeList(temp_word);
+                        insertNode(&rootLIST, tempNode);
+                    }
                     used_word_flag = true;
                     light_mode = false;
                 } else {
