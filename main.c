@@ -85,7 +85,7 @@ void printList (struct nodeLIST * node) {
 // TODO: change this below, taken from the internet
 
 void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
-	if (*root == NULL || strcmp((*root)->word, temp->word) > 0) {
+	if (strcmp((*root)->word, temp->word) > 0 || *root == NULL) {
 		temp->next = *root;
 		*root = temp;
 		return;
