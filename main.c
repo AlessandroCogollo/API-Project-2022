@@ -243,12 +243,12 @@ bool fastCheck(char * word, char * cw, char * pn, int k) {
 }
 
 bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
-    int charCount;
-    constraintCell tempConstraint;
-
     if (fastCheck(temp, cw, pn, k)) {
         return true;
     }
+
+    int charCount;
+    constraintCell tempConstraint;
 
     memset(visited, false, k);
 
@@ -288,14 +288,12 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
 }
 
 bool lightCheckBan(constraintCell * constraints, char * word, char *cw, char *pn, int k) {
-    int charCount;
-
     if (fastCheck(word, cw, pn, k)) {
         return true;
     }
 
+    int charCount;
     constraintCell tempConstraint;
-    memset(visited, false, k);
 
     for (int i = 0; i < k && modified_constraints[i] != -1; i++) {
         tempConstraint = constraints[modified_constraints[i]];
@@ -588,7 +586,6 @@ int main() {
         }
     } while (code == 0);
 
-    // TODO: abilitate this -> fixRBTree(rootRB, rootRB);
     resetConstraints(constraints, k, true);
 
     // define reference word:
@@ -695,7 +692,6 @@ int main() {
         do {
             if (used_word_flag) {
                 temp_word = (char *) malloc(sizeof(char) * k);
-                // TODO: abilitate this -> fixRBTree(rootRB, rootRB);
                 used_word_flag = false;
             }
             code = getWord(temp_word, k);
