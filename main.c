@@ -703,8 +703,6 @@ int main() {
             switch (code) {
                 case 0:
                     insertNodeRB(rootRB, temp_word);
-                    struct nodeLIST * tempNode = newNodeList(temp_word);
-                    insertNode(&rootLIST, tempNode);
                     used_word_flag = true;
                     break;
                 case 1:
