@@ -227,8 +227,6 @@ bool fastCheck(char * word, char * cw, char * pn, int k) {
                 return true;
             }
         }
-    }
-    for (int i = 0; i < k; i++) {
         if (pn[i] != '*') {
             found = false;
             for (int j = 0; j < k && !found; j++) {
