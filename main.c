@@ -108,140 +108,6 @@ void resetList(struct nodeLIST ** root) {
     * root = NULL;
 }
 
-// --------------- RB TREE -----------------
-
-// TODO: check if RB tree is working
-
-struct nodeRB {
-    char *word;
-    bool red;
-    struct nodeRB *father, *left, *right;
-};
-
-struct nodeRB * newNodeRB(char *word) {
-    struct nodeRB * new_node;
-    new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
-    new_node->red = true;
-    new_node->word = word;
-    new_node->left = new_node->right = new_node->father = NULL;
-    return new_node;
-}
-
-struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
-    if (node == NULL)
-        return newNodeRB(word);
-    if (strcmp(word, node->word) < 0) {
-        node->left = insertNodeRB(node->left, word);
-        node->left->father = node;
-    } else {
-        node->right = insertNodeRB(node->right, word);
-        node->right->father = node;
-    }
-    return node;
-}
-
-void rotateRBLeft(struct nodeRB *root, struct nodeRB *nodeX) {
-    struct nodeRB * nodeY = nodeX->right;
-    nodeX->right = nodeY->left;
-    if (nodeY->left != NULL)
-        nodeY->left->father = nodeX;
-    nodeY->father = nodeX->father;
-    if (nodeX->father == NULL) {
-        root = nodeY;
-    } else if (nodeX == nodeX->father->left) {
-        nodeX->father->left = nodeY;
-    } else {
-        nodeX->father->right = nodeY;
-    }
-    nodeY->left = nodeX;
-    nodeX->father = nodeY;
-}
-
-void rotateRBRight(struct nodeRB *root, struct nodeRB *nodeX) {
-    struct nodeRB * nodeY = nodeX->left;
-    nodeX->left = nodeY->right;
-    if (nodeY->right != NULL)
-        nodeY->right->father = nodeX;
-    nodeY->father = nodeX->father;
-    if (nodeX->father == NULL) {
-        root = nodeY;
-    } else if (nodeX == nodeX->father->right) {
-        nodeX->father->right = nodeY;
-    } else {
-        nodeX->father->left = nodeY;
-    }
-    nodeY->right = nodeX;
-    nodeX->father = nodeY;
-}
-
-void fixRBTree(struct nodeRB *root, struct nodeRB *node) {
-    struct nodeRB * temp;
-    while (node != root && node->father->red) {
-        if (node->father == node->father->father->left) {
-            temp = node->father->father->right;
-            if (temp->red) {
-                node->father->red = false;
-                temp->red = false;
-                temp->father->father->red = true;
-                node = node->father->father;
-            } else {
-                if (node == node->father->right) {
-                    node = node->father;
-                    rotateRBLeft(root, node);
-                }
-                node->father->red = false;
-                node->father->father->red = true;
-                rotateRBRight(root, node->father->father);
-            }
-        } else {
-            temp = node->father->father->left;
-            if (temp->red) {
-                node->father->red = false;
-                temp->red = false;
-                temp->father->father->red = true;
-                node = node->father->father;
-            } else {
-                if (node == node->father->left) {
-                    node = node->father;
-                    rotateRBRight(root, node);
-                }
-                node->father->red = false;
-                node->father->father->red = true;
-                rotateRBLeft(root, node->father->father);
-            }
-        }
-    }
-    root->red = false;
-}
-
-void newList(struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head) {
-    if (node != NULL) {
-        newList(node->left, root, head);
-        if (*root == NULL) {
-            *root = newNodeList(node->word);
-            *head = *root;
-        } else {
-            (*head)->next = newNodeList(node->word);
-            *head = (*head)->next;
-        }
-        quantity++;
-        newList(node->right, root, head);
-    }
-}
-
-struct nodeRB * searchRB(struct nodeRB *node, char *word) {
-    if (node == NULL) {
-        return node;
-    }
-    int ret_val = strcmp(word, node->word);
-    if (ret_val < 0) {
-        return searchRB(node->left, word);
-    } else if (ret_val == 0){
-        return node;
-    } else {
-        return searchRB(node->right, word);
-    }
-}
 
 // -------------- UTILS ----------------
 
@@ -354,11 +220,11 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
     return win_flag;
 }
 
-bool fastCheck(struct nodeLIST * temp, char * cw, char * pn, int k) {
+bool fastCheck(char * word, char * cw, char * pn, int k) {
     bool found = false;
     for (int i = 0; i < k; i++) {
         if (cw[i] != '*') {
-            if (cw[i] != temp->word[i]) {
+            if (cw[i] != word[i]) {
                 return true;
             }
         }
@@ -367,7 +233,7 @@ bool fastCheck(struct nodeLIST * temp, char * cw, char * pn, int k) {
         if (pn[i] != '*') {
             found = false;
             for (int j = 0; j < k && !found; j++) {
-                if (temp->word[j] == pn[i]) {
+                if (word[j] == pn[i]) {
                     found = true;
                 }
             }
@@ -379,7 +245,7 @@ bool fastCheck(struct nodeLIST * temp, char * cw, char * pn, int k) {
     return false;
 }
 
-bool heavyCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *cw, char *pn, int k) {
+bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
     int charCount;
     constraintCell tempConstraint;
 
@@ -391,13 +257,13 @@ bool heavyCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *c
 
     for (int i = 0; i < k; i++) {
         if (!visited[i]) {
-            tempConstraint = constraints[constraintMapper(temp->word[i])];
+            tempConstraint = constraints[constraintMapper(temp[i])];
             if (tempConstraint.cardinality == -2) {
                 return true;
             }
             charCount = 0;
             for (int z = i; z < k; z++) {
-                if (temp->word[z] == temp->word[i]) {
+                if (temp[z] == temp[i]) {
                     visited[z] = true;
                     if (tempConstraint.presence[z] == -1) {
                         return true;
@@ -424,10 +290,10 @@ bool heavyCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *c
     return false;
 }
 
-bool lightCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *cw, char *pn, int k) {
+bool lightCheckBan(constraintCell * constraints, char * word, char *cw, char *pn, int k) {
     int charCount;
 
-    if (fastCheck(temp, cw, pn, k)) {
+    if (fastCheck(word, cw, pn, k)) {
         return true;
     }
 
@@ -438,14 +304,14 @@ bool lightCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *c
         tempConstraint = constraints[modified_constraints[i]];
         if (tempConstraint.cardinality == -2) {
             for (int j = 0; j < k; j++) {
-                if (constraintMapper(temp->word[j]) == modified_constraints[i]) {
+                if (constraintMapper(word[j]) == modified_constraints[i]) {
                     return true;
                 }
             }
         } else {
             charCount = 0;
             for (int z = 0; z < k; z++) {
-                if (constraintMapper(temp->word[z]) == modified_constraints[i]) {
+                if (constraintMapper(word[z]) == modified_constraints[i]) {
                     charCount++;
                     if (tempConstraint.presence[z] == -1) {
                         return true;
@@ -477,7 +343,7 @@ void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * co
     while (temp != NULL) {
         //delete temp node
         if (lightMode) {
-            if (lightCheckBan(constraints, temp, cw, pn, k)) {
+            if (lightCheckBan(constraints, temp->word, cw, pn, k)) {
                 if (*root == temp) {
                     *root = (*root)->next;
                     free(temp);
@@ -493,7 +359,7 @@ void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * co
                 temp = temp->next;
             }
         } else {
-            if (heavyCheckBan(constraints, temp, cw, pn, k)) {
+            if (heavyCheckBan(constraints, temp->word, cw, pn, k)) {
                 if (*root == temp) {
                     *root = (*root)->next;
                     free(temp);
@@ -545,8 +411,162 @@ int getWord(char *temp_word, int length) {
     return 0;
 }
 
+// --------------- RB TREE -----------------
+
+// TODO: check if RB tree is working
+
+struct nodeRB {
+    char *word;
+    bool red;
+    struct nodeRB *father, *left, *right;
+};
+
+struct nodeRB * newNodeRB(char *word) {
+    struct nodeRB * new_node;
+    new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
+    new_node->red = true;
+    new_node->word = word;
+    new_node->left = new_node->right = new_node->father = NULL;
+    return new_node;
+}
+
+struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
+    if (node == NULL)
+        return newNodeRB(word);
+    if (strcmp(word, node->word) < 0) {
+        node->left = insertNodeRB(node->left, word);
+        node->left->father = node;
+    } else {
+        node->right = insertNodeRB(node->right, word);
+        node->right->father = node;
+    }
+    return node;
+}
+
+void rotateRBLeft(struct nodeRB *root, struct nodeRB *nodeX) {
+    struct nodeRB * nodeY = nodeX->right;
+    nodeX->right = nodeY->left;
+    if (nodeY->left != NULL)
+        nodeY->left->father = nodeX;
+    nodeY->father = nodeX->father;
+    if (nodeX->father == NULL) {
+        root = nodeY;
+    } else if (nodeX == nodeX->father->left) {
+        nodeX->father->left = nodeY;
+    } else {
+        nodeX->father->right = nodeY;
+    }
+    nodeY->left = nodeX;
+    nodeX->father = nodeY;
+}
+
+void rotateRBRight(struct nodeRB *root, struct nodeRB *nodeX) {
+    struct nodeRB * nodeY = nodeX->left;
+    nodeX->left = nodeY->right;
+    if (nodeY->right != NULL)
+        nodeY->right->father = nodeX;
+    nodeY->father = nodeX->father;
+    if (nodeX->father == NULL) {
+        root = nodeY;
+    } else if (nodeX == nodeX->father->right) {
+        nodeX->father->right = nodeY;
+    } else {
+        nodeX->father->left = nodeY;
+    }
+    nodeY->right = nodeX;
+    nodeX->father = nodeY;
+}
+
+void fixRBTree(struct nodeRB *root, struct nodeRB *node) {
+    struct nodeRB * temp;
+    while (node != root && node->father->red) {
+        if (node->father == node->father->father->left) {
+            temp = node->father->father->right;
+            if (temp->red) {
+                node->father->red = false;
+                temp->red = false;
+                temp->father->father->red = true;
+                node = node->father->father;
+            } else {
+                if (node == node->father->right) {
+                    node = node->father;
+                    rotateRBLeft(root, node);
+                }
+                node->father->red = false;
+                node->father->father->red = true;
+                rotateRBRight(root, node->father->father);
+            }
+        } else {
+            temp = node->father->father->left;
+            if (temp->red) {
+                node->father->red = false;
+                temp->red = false;
+                temp->father->father->red = true;
+                node = node->father->father;
+            } else {
+                if (node == node->father->left) {
+                    node = node->father;
+                    rotateRBRight(root, node);
+                }
+                node->father->red = false;
+                node->father->father->red = true;
+                rotateRBLeft(root, node->father->father);
+            }
+        }
+    }
+    root->red = false;
+}
+
+void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
+    if (node != NULL) {
+        newListFiltered(constraints, node->left, root, head, cw, pn, k);
+        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+            if (*root == NULL) {
+                *root = newNodeList(node->word);
+                *head = *root;
+            } else {
+                (*head)->next = newNodeList(node->word);
+                *head = (*head)->next;
+            }
+            quantity++;
+        }
+        newListFiltered(constraints, node->right, root, head, cw, pn, k);
+    }
+}
+
+void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
+    if (node != NULL) {
+        newList(constraints, node->left, root, head, cw, pn, k);
+        if (!lightCheckBan(constraints, node->word, cw, pn, k)) {
+            if (*root == NULL) {
+                *root = newNodeList(node->word);
+                *head = *root;
+            } else {
+                (*head)->next = newNodeList(node->word);
+                *head = (*head)->next;
+            }
+            quantity++;
+        }
+        newList(constraints, node->right, root, head, cw, pn, k);
+    }
+}
+
+struct nodeRB * searchRB(struct nodeRB *node, char *word) {
+    if (node == NULL) {
+        return node;
+    }
+    int ret_val = strcmp(word, node->word);
+    if (ret_val < 0) {
+        return searchRB(node->left, word);
+    } else if (ret_val == 0){
+        return node;
+    } else {
+        return searchRB(node->right, word);
+    }
+}
+
 int main() {
-    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, light_mode;
+    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, first_time_flag, light_mode;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeRB* rootRB = NULL;
@@ -589,7 +609,6 @@ int main() {
     // new game begins
     do {
         quantity = 0;
-        newList(rootRB, &rootLIST, &headLIST);
 
         getWord(reference_word, k);
 
@@ -605,7 +624,7 @@ int main() {
 
         i = 0;
         winner_flag = filtered_flag = light_mode = false;
-        used_word_flag = true;
+        used_word_flag = first_time_flag = true;
 
         do {
             if (used_word_flag) {
@@ -626,9 +645,16 @@ int main() {
                     if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
-                        banwords(&rootLIST, certain_word, presences_needed, constraints, k, light_mode);
-                        if (light_mode == false) {
-                            light_mode = true;
+                        if (first_time_flag) {
+                            // if its the first time of a new game, init list by removing words
+                            newList(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                            first_time_flag = false;
+                        } else {
+                            // else, simply ban words
+                            banwords(&rootLIST, certain_word, presences_needed, constraints, k, light_mode);
+                            if (light_mode == false) {
+                                light_mode = true;
+                            }
                         }
                         if (!winner_flag) {
                             printf("%s\n%d\n", result_word, quantity);
@@ -641,10 +667,16 @@ int main() {
                     }
                 }
             } else if (code == 2) {
-                if (new_insertion_flag) {
-                    new_insertion_flag = false;
-                    light_mode = false;
-                    banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
+                if (first_time_flag) {
+                    // if its the first time of a new game, init list by removing words
+                    newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                    first_time_flag = false;
+                } else {
+                    if (new_insertion_flag) {
+                        new_insertion_flag = false;
+                        light_mode = false;
+                        banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
+                    }
                 }
                 printList(rootLIST);
             } else if (code == 3) {
