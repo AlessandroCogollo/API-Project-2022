@@ -101,13 +101,14 @@ void insertNode(struct nodeLIST **root, char *word) {
 	current->next = temp;
 }
 
-void resetList(struct nodeLIST * root) {
-    struct nodeLIST * temp = root;
+void resetList(struct nodeLIST ** root) {
+    struct nodeLIST * temp = *root, * succ;
     while (temp != NULL) {
-        quantity++;
-        temp->good = true;
-        temp = temp->next;
+        succ = temp->next;
+        free(temp);
+        temp = succ;
     }
+    * root = NULL;
 }
 
 // --------------- RB TREE -----------------
@@ -135,7 +136,7 @@ struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
     if (strcmp(word, node->word) < 0) {
         node->left = insertNodeRB(node->left, word);
         node->left->father = node;
-    } else if (strcmp(word, node->word) > 0) {
+    } else {
         node->right = insertNodeRB(node->right, word);
         node->right->father = node;
     }
@@ -232,10 +233,14 @@ void newList(struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head
 }
 
 struct nodeRB * searchRB(struct nodeRB *node, char *word) {
-    if (node == NULL || strcmp(word, node->word) == 0) {
+    if (node == NULL) {
         return node;
-    } else if (strcmp(word, node->word) < 0) {
+    }
+    int ret_val = strcmp(word, node->word);
+    if (ret_val < 0) {
         return searchRB(node->left, word);
+    } else if (ret_val == 0){
+        return node;
     } else {
         return searchRB(node->right, word);
     }
@@ -469,27 +474,43 @@ bool lightCheckBan(constraintCell * constraints, struct nodeLIST * temp, char *c
     return false;
 }
 
-void banwords(struct nodeLIST * root, char * cw, char * pn, constraintCell * constraints, int k, bool lightMode) {
+void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k, bool lightMode) {
     // cw: certain_word, pn: presence_needed
-    struct nodeLIST *temp = root;
+    struct nodeLIST *temp = *root, *prev = NULL;
     while (temp != NULL) {
         //delete temp node
         if (lightMode) {
-            if (temp->good) {
-                if (lightCheckBan(constraints, temp, cw, pn, k)) {
-                    temp->good = false;
-                    quantity--;
+            if (lightCheckBan(constraints, temp, cw, pn, k)) {
+                if (*root == temp) {
+                    *root = (*root)->next;
+                    free(temp);
+                    temp = *root;
+                } else {
+                    prev->next = temp->next;
+                    free(temp);
+                    temp = prev->next;
                 }
+                quantity--;
+            } else {
+                prev = temp;
+                temp = temp->next;
             }
-            temp = temp->next;
         } else {
-            if (temp->good) {
-                if (heavyCheckBan(constraints, temp, cw, pn, k)) {
-                    temp->good = false;
-                    quantity--;
+            if (heavyCheckBan(constraints, temp, cw, pn, k)) {
+                if (*root == temp) {
+                    *root = (*root)->next;
+                    free(temp);
+                    temp = *root;
+                } else {
+                    prev->next = temp->next;
+                    free(temp);
+                    temp = prev->next;
                 }
+                quantity--;
+            } else {
+                prev = temp;
+                temp = temp->next;
             }
-            temp = temp->next;
         }
     }
 }
@@ -567,11 +588,12 @@ int main() {
     new_insertion_flag = false;
 
     // generate new list
-    quantity = 0;
-    newList(rootRB, &rootLIST, &headLIST);
 
     // new game begins
     do {
+        quantity = 0;
+        newList(rootRB, &rootLIST, &headLIST);
+
         getWord(reference_word, k);
 
         // acquire tries quantity
@@ -606,7 +628,7 @@ int main() {
                     if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
-                        banwords(rootLIST, certain_word, presences_needed, constraints, k, light_mode);
+                        banwords(&rootLIST, certain_word, presences_needed, constraints, k, light_mode);
                         if (light_mode == false) {
                             light_mode = true;
                         }
@@ -624,7 +646,7 @@ int main() {
                 if (new_insertion_flag) {
                     new_insertion_flag = false;
                     light_mode = false;
-                    banwords(rootLIST, certain_word, presences_needed, constraints, k, false);
+                    banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
                 }
                 printList(rootLIST);
             } else if (code == 3) {
@@ -655,8 +677,7 @@ int main() {
                     used_word_flag = true;
                     break;
                 case 1:
-                    quantity = 0;
-                    resetList(rootLIST);
+                    resetList(&rootLIST);
                     resetConstraints(constraints, k, false);
                     break;
                 case 2:
