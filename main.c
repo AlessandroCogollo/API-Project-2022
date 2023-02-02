@@ -269,7 +269,6 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
     int charCount;
     constraintCell tempConstraint;
 
-    // memset(visited, false, k);
     for (int i = 0; i < k; i++) {
         visited[i] = false;
     }
@@ -416,7 +415,6 @@ int getWord(char *temp_word, int length) {
 
     if (temp_word[0] == '+') {
         temp = temp_word[12];
-        // memset(temp_word,0,strlen(temp_word));
         switch (temp) {
             case 't': // +nuova_partita
                 return 1;
@@ -573,8 +571,10 @@ int main() {
         rc = rc + 1;
 
         // set certain_word & presences_needed to '*'
-        memset(certain_word, '*', k);
-        memset(presences_needed, '*', k);
+        for (int c = 0; c < k; c++) {
+            certain_word[c] = '*';
+            presences_needed[c] = '*';
+        }
 
         i = 0;
         winner_flag = filtered_flag = light_mode = false;
