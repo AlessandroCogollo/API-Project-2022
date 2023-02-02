@@ -24,9 +24,11 @@ typedef struct {
 void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
     if (firstTime) {
         for (int i = 0; i < CONSTQUANTITY; i++) {
-            cArr[i].cardinality = -1;
             cArr[i].presence = (int *) malloc (sizeof(int) * length);
-            memset(cArr[i].presence, 0, length);
+            cArr[i].cardinality = -1;
+            for (int j = 0; j < length; j++) {
+                cArr[i].presence[j] = 0;
+            }
             cArr[i].exact_number = false;
         }
     } else {
@@ -38,7 +40,6 @@ void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
             }
         }
     }
-
 }
 
 int constraintMapper(char character) {
@@ -256,12 +257,13 @@ bool checkPresenceNeeded(const char * word, const char * pn, int k) {
 }
 
 bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
-    int charCount;
-    constraintCell tempConstraint;
 
     if (checkCertainWord(temp, cw, k) || checkPresenceNeeded(temp, pn, k)) {
         return true;
     }
+
+    int charCount;
+    constraintCell tempConstraint;
 
     // memset(visited, false, k);
     for (int i = 0; i < k; i++) {
@@ -356,9 +358,8 @@ bool lightCheckBan(constraintCell * constraints, char * word, char *cw, char *pn
 void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k, bool lightMode) {
     // cw: certain_word, pn: presence_needed
     struct nodeLIST *temp = *root, *prev = NULL;
-    while (temp != NULL) {
-        //delete temp node
-        if (lightMode) {
+    if (lightMode) {
+        while (temp != NULL) {
             if (lightCheckBan(constraints, temp->word, cw, pn, k)) {
                 if (*root == temp) {
                     *root = (*root)->next;
@@ -374,7 +375,9 @@ void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * co
                 prev = temp;
                 temp = temp->next;
             }
-        } else {
+        }
+    } else {
+        while (temp != NULL) {
             if (heavyCheckBan(constraints, temp->word, cw, pn, k)) {
                 if (*root == temp) {
                     *root = (*root)->next;
@@ -445,12 +448,11 @@ struct nodeRB * newNodeRB(char *word) {
 struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
     if (node == NULL)
         return newNodeRB(word);
-    if (strcmp(word, node->word) < 0) {
+    int retCode = strcmp(word, node->word);
+    if (retCode < 0) {
         node->left = insertNodeRB(node->left, word);
-        // node->left->father = node;
-    } else {
+    } else if (retCode > 0){
         node->right = insertNodeRB(node->right, word);
-        // node->right->father = node;
     }
     return node;
 }
@@ -473,20 +475,21 @@ void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct n
 }
 
 void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
-    if (node != NULL) {
-        newList(constraints, node->left, root, head, cw, pn, k);
-        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
-            if (*root == NULL) {
-                *root = newNodeList(node->word);
-                *head = *root;
-            } else {
-                (*head)->next = newNodeList(node->word);
-                *head = (*head)->next;
-            }
-            quantity++;
-        }
-        newList(constraints, node->right, root, head, cw, pn, k);
+    if (node == NULL) {
+        return;
     }
+    newList(constraints, node->left, root, head, cw, pn, k);
+    if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+        if (*root == NULL) {
+            *root = newNodeList(node->word);
+            *head = *root;
+        } else {
+            (*head)->next = newNodeList(node->word);
+            *head = (*head)->next;
+        }
+        quantity++;
+    }
+    newList(constraints, node->right, root, head, cw, pn, k);
 }
 
 struct nodeRB * searchRB(struct nodeRB *node, char *word) {
@@ -553,6 +556,7 @@ int main() {
         rc = scanf("%d\n", &n);
         rc = rc + 1;
 
+        // set certain_word & presences_needed to '*'
         memset(certain_word, '*', k);
         memset(presences_needed, '*', k);
 
