@@ -408,20 +408,16 @@ int getWord(char *temp_word, int length) {
 
 // --------------- RB TREE -----------------
 
-// TODO: check if RB tree is working
-
 struct nodeRB {
     char *word;
-    bool red;
-    struct nodeRB *father, *left, *right;
+    struct nodeRB *left, *right;
 };
 
 struct nodeRB * newNodeRB(char *word) {
     struct nodeRB * new_node;
     new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
-    new_node->red = true;
     new_node->word = word;
-    new_node->left = new_node->right = new_node->father = NULL;
+    new_node->left = new_node->right = NULL;
     return new_node;
 }
 
@@ -430,86 +426,12 @@ struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
         return newNodeRB(word);
     if (strcmp(word, node->word) < 0) {
         node->left = insertNodeRB(node->left, word);
-        node->left->father = node;
+        // node->left->father = node;
     } else {
         node->right = insertNodeRB(node->right, word);
-        node->right->father = node;
+        // node->right->father = node;
     }
     return node;
-}
-
-void rotateRBLeft(struct nodeRB *root, struct nodeRB *nodeX) {
-    struct nodeRB * nodeY = nodeX->right;
-    nodeX->right = nodeY->left;
-    if (nodeY->left != NULL)
-        nodeY->left->father = nodeX;
-    nodeY->father = nodeX->father;
-    if (nodeX->father == NULL) {
-        root = nodeY;
-    } else if (nodeX == nodeX->father->left) {
-        nodeX->father->left = nodeY;
-    } else {
-        nodeX->father->right = nodeY;
-    }
-    nodeY->left = nodeX;
-    nodeX->father = nodeY;
-}
-
-void rotateRBRight(struct nodeRB *root, struct nodeRB *nodeX) {
-    struct nodeRB * nodeY = nodeX->left;
-    nodeX->left = nodeY->right;
-    if (nodeY->right != NULL)
-        nodeY->right->father = nodeX;
-    nodeY->father = nodeX->father;
-    if (nodeX->father == NULL) {
-        root = nodeY;
-    } else if (nodeX == nodeX->father->right) {
-        nodeX->father->right = nodeY;
-    } else {
-        nodeX->father->left = nodeY;
-    }
-    nodeY->right = nodeX;
-    nodeX->father = nodeY;
-}
-
-void fixRBTree(struct nodeRB *root, struct nodeRB *node) {
-    struct nodeRB * temp;
-    while (node != root && node->father->red) {
-        if (node->father == node->father->father->left) {
-            temp = node->father->father->right;
-            if (temp->red) {
-                node->father->red = false;
-                temp->red = false;
-                temp->father->father->red = true;
-                node = node->father->father;
-            } else {
-                if (node == node->father->right) {
-                    node = node->father;
-                    rotateRBLeft(root, node);
-                }
-                node->father->red = false;
-                node->father->father->red = true;
-                rotateRBRight(root, node->father->father);
-            }
-        } else {
-            temp = node->father->father->left;
-            if (temp->red) {
-                node->father->red = false;
-                temp->red = false;
-                temp->father->father->red = true;
-                node = node->father->father;
-            } else {
-                if (node == node->father->left) {
-                    node = node->father;
-                    rotateRBRight(root, node);
-                }
-                node->father->red = false;
-                node->father->father->red = true;
-                rotateRBLeft(root, node->father->father);
-            }
-        }
-    }
-    root->red = false;
 }
 
 void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
@@ -531,7 +453,9 @@ void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct n
 
 void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
     if (node != NULL) {
-        newList(constraints, node->left, root, head, cw, pn, k);
+        if (node->left != NULL) {
+            newList(constraints, node->left, root, head, cw, pn, k);
+        }
         if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
             if (*root == NULL) {
                 *root = newNodeList(node->word);
@@ -542,7 +466,9 @@ void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST 
             }
             quantity++;
         }
-        newList(constraints, node->right, root, head, cw, pn, k);
+        if (node->right != NULL) {
+            newList(constraints, node->right, root, head, cw, pn, k);
+        }
     }
 }
 
