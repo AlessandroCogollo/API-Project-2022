@@ -553,11 +553,8 @@ int main() {
         rc = scanf("%d\n", &n);
         rc = rc + 1;
 
-        // set certain_word & presences_needed to '*'
-        for (int u = 0; u < k; u++) {
-            certain_word[u] = '*';
-            presences_needed[u] = '*';
-        }
+        memset(certain_word, '*', k);
+        memset(presences_needed, '*', k);
 
         i = 0;
         winner_flag = filtered_flag = light_mode = false;
