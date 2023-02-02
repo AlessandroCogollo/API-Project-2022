@@ -9,7 +9,7 @@
 // TODO: remove global variables
 
 int quantity, *modified_constraints;
-bool * visited;
+bool * visited, mod_cw, mod_pn;
 
 // ----------- CONSTRAINTS --------------
 
@@ -183,6 +183,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
             certain_word[i] = new_word[i];
+            mod_cw = true;
             tempArrCell.presence[i] = 1;
         } else {
             exists = false;
@@ -208,6 +209,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                             z++;
                         }
                         presence_needed[z] = new_word[i];
+                        mod_pn = true;
                     }
                 }
                 tempArrCell.presence[i] = -1;
@@ -221,23 +223,31 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
 
 bool fastCheck(char * word, char * cw, char * pn, int k) {
     bool found = false;
-    for (int i = 0; i < k; i++) {
-        if (cw[i] != '*') {
-            if (cw[i] != word[i]) {
-                return true;
-            }
-        }
-        if (pn[i] != '*') {
-            found = false;
-            for (int j = 0; j < k && !found; j++) {
-                if (word[j] == pn[i]) {
-                    found = true;
+    if (mod_cw) {
+        for (int i = 0; i < k; i++) {
+            if (cw[i] != '*') {
+                if (cw[i] != word[i]) {
+                    return true;
                 }
             }
-            if (!found) {
-                return true;
+        }
+        mod_cw = false;
+    }
+    if (mod_pn) {
+        for (int i = 0; i < k; i++) {
+            if (pn[i] != '*') {
+                found = false;
+                for (int j = 0; j < k && !found; j++) {
+                    if (word[j] == pn[i]) {
+                        found = true;
+                    }
+                }
+                if (!found) {
+                    return true;
+                }
             }
         }
+        mod_pn = true;
     }
     return false;
 }
@@ -245,6 +255,8 @@ bool fastCheck(char * word, char * cw, char * pn, int k) {
 bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
     int charCount;
     constraintCell tempConstraint;
+
+    mod_pn = mod_cw = true;
 
     if (fastCheck(temp, cw, pn, k)) {
         return true;
@@ -290,7 +302,7 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
 }
 
 bool lightCheckBan(constraintCell * constraints, char * word, char *cw, char *pn, int k) {
-    if (fastCheck(word, cw, pn, k)) {
+    if ((mod_cw || mod_pn) && fastCheck(word, cw, pn, k)) {
         return true;
     }
 
@@ -458,7 +470,7 @@ void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST 
         if (node->left != NULL) {
             newList(constraints, node->left, root, head, cw, pn, k);
         }
-        if (!lightCheckBan(constraints, node->word, cw, pn, k)) {
+        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
             if (*root == NULL) {
                 *root = newNodeList(node->word);
                 *head = *root;
