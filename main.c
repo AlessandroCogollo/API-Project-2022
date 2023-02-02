@@ -23,14 +23,16 @@ typedef struct {
 
 void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
     for (int i = 0; i < CONSTQUANTITY; i++) {
-        cArr[i].cardinality = -1;
-        if (firstTime) {
-            cArr[i].presence = (int *) malloc (sizeof(int) * length);
+        if (cArr[i].cardinality != -1) {
+            cArr[i].cardinality = -1;
+            if (firstTime) {
+                cArr[i].presence = (int *) malloc (sizeof(int) * length);
+            }
+            for (int j = 0; j < length; j++) {
+                cArr[i].presence[j] = 0;
+            }
+            cArr[i].exact_number = false;
         }
-        for (int j = 0; j < length; j++) {
-            cArr[i].presence[j] = 0;
-        }
-        cArr[i].exact_number = false;
     }
 }
 
@@ -98,7 +100,7 @@ void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
 	current->next = temp;
 }
 
-void resetList(struct nodeLIST ** root) {
+void resetList(struct nodeLIST ** root, struct nodeLIST ** head) {
     struct nodeLIST * temp = *root, * succ;
     while (temp != NULL) {
         succ = temp->next;
@@ -106,6 +108,7 @@ void resetList(struct nodeLIST ** root) {
         temp = succ;
     }
     * root = NULL;
+    * head = NULL;
 }
 
 // -------------- UTILS ----------------
@@ -442,12 +445,11 @@ struct nodeRB * newNodeRB(char *word) {
 struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
     if (node == NULL)
         return newNodeRB(word);
-    if (strcmp(word, node->word) < 0) {
+    int retCode = strcmp(word, node->word);
+    if (retCode < 0) {
         node->left = insertNodeRB(node->left, word);
-        // node->left->father = node;
-    } else {
+    } else if (retCode > 0){
         node->right = insertNodeRB(node->right, word);
-        // node->right->father = node;
     }
     return node;
 }
@@ -470,24 +472,21 @@ void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct n
 }
 
 void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
-    if (node != NULL) {
-        if (node->left != NULL) {
-            newList(constraints, node->left, root, head, cw, pn, k);
-        }
-        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
-            if (*root == NULL) {
-                *root = newNodeList(node->word);
-                *head = *root;
-            } else {
-                (*head)->next = newNodeList(node->word);
-                *head = (*head)->next;
-            }
-            quantity++;
-        }
-        if (node->right != NULL) {
-            newList(constraints, node->right, root, head, cw, pn, k);
-        }
+    if (node == NULL) {
+        return;
     }
+    newList(constraints, node->left, root, head, cw, pn, k);
+    if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+        if (*root == NULL) {
+            *root = newNodeList(node->word);
+            *head = *root;
+        } else {
+            (*head)->next = newNodeList(node->word);
+            *head = (*head)->next;
+        }
+        quantity++;
+    }
+    newList(constraints, node->right, root, head, cw, pn, k);
 }
 
 struct nodeRB * searchRB(struct nodeRB *node, char *word) {
@@ -645,7 +644,7 @@ int main() {
                     used_word_flag = true;
                     break;
                 case 1:
-                    resetList(&rootLIST);
+                    resetList(&rootLIST, &headLIST);
                     resetConstraints(constraints, k, false);
                     break;
                 case 2:
