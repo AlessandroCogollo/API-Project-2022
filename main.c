@@ -456,7 +456,7 @@ void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST 
         if (node->left != NULL) {
             newList(constraints, node->left, root, head, cw, pn, k);
         }
-        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+        if (!lightCheckBan(constraints, node->word, cw, pn, k)) {
             if (*root == NULL) {
                 *root = newNodeList(node->word);
                 *head = *root;
