@@ -35,7 +35,6 @@ void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
         for (int i = 0; i < CONSTQUANTITY; i++) {
             if (cArr[i].cardinality != -1) {
                 cArr[i].cardinality = -1;
-                cArr[i].presence = (int *) malloc (sizeof(int) * length);
                 for (int j = 0; j < length; j++) {
                     cArr[i].presence[j] = 0;
                 }
