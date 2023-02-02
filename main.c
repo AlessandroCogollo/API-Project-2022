@@ -603,7 +603,7 @@ int main() {
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
                         if (first_time_flag) {
                             // if its the first time of a new game, init list by removing words
-                            newList(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                            newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
                             first_time_flag = false;
                         } else {
                             // else, simply ban words
