@@ -22,16 +22,26 @@ typedef struct {
 } constraintCell;
 
 void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
-    for (int i = 0; i < CONSTQUANTITY; i++) {
-        if (cArr[i].cardinality != -1) {
-            cArr[i].cardinality = -1;
-            if (firstTime) {
-                cArr[i].presence = (int *) malloc (sizeof(int) * length);
+    if (firstTime) {
+        for (int i = 0; i < CONSTQUANTITY; i++) {
+            cArr[i].presence = (int *) malloc (sizeof(int) * length);
+            if (cArr[i].cardinality != -1) {
+                cArr[i].cardinality = -1;
+                for (int j = 0; j < length; j++) {
+                    cArr[i].presence[j] = 0;
+                }
+                cArr[i].exact_number = false;
             }
-            for (int j = 0; j < length; j++) {
-                cArr[i].presence[j] = 0;
+        }
+    } else {
+        for (int i = 0; i < CONSTQUANTITY; i++) {
+            if (cArr[i].cardinality != -1) {
+                cArr[i].cardinality = -1;
+                for (int j = 0; j < length; j++) {
+                    cArr[i].presence[j] = 0;
+                }
+                cArr[i].exact_number = false;
             }
-            cArr[i].exact_number = false;
         }
     }
 }
@@ -61,14 +71,12 @@ int constraintMapper(char character) {
 
 struct nodeLIST {
     char *word;
-    bool good;
     struct nodeLIST *next;
 };
 
 struct nodeLIST * newNodeList(char *word) {
     struct nodeLIST * new_node;
     new_node = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
-    new_node->good = true;
     new_node->word = word;
     new_node->next = NULL;
     return new_node;
@@ -77,9 +85,7 @@ struct nodeLIST * newNodeList(char *word) {
 void printList (struct nodeLIST * node) {
     struct nodeLIST *temp = node;
     while (temp != NULL) {
-        if (temp->good) {
-            printf("%s\n", temp->word);
-        }
+        printf("%s\n", temp->word);
         temp = temp->next;
     }
 }
@@ -100,7 +106,7 @@ void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
 	current->next = temp;
 }
 
-void resetList(struct nodeLIST ** root, struct nodeLIST ** head) {
+void resetList(struct nodeLIST ** root) {
     struct nodeLIST * temp = *root, * succ;
     while (temp != NULL) {
         succ = temp->next;
@@ -108,7 +114,6 @@ void resetList(struct nodeLIST ** root, struct nodeLIST ** head) {
         temp = succ;
     }
     * root = NULL;
-    * head = NULL;
 }
 
 // -------------- UTILS ----------------
@@ -644,7 +649,7 @@ int main() {
                     used_word_flag = true;
                     break;
                 case 1:
-                    resetList(&rootLIST, &headLIST);
+                    resetList(&rootLIST);
                     resetConstraints(constraints, k, false);
                     break;
                 case 2:
