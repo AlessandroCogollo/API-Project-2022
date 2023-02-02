@@ -221,34 +221,34 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
     return win_flag;
 }
 
-bool fastCheck(char * word, char * cw, char * pn, int k) {
-    bool found = false;
-    if (mod_cw) {
-        for (int i = 0; i < k; i++) {
-            if (cw[i] != '*') {
-                if (cw[i] != word[i]) {
-                    return true;
-                }
+bool checkCertainWord(const char * word, const char * cw, int k) {
+    for (int i = 0; i < k; i++) {
+        if (cw[i] != '*') {
+            if (cw[i] != word[i]) {
+                return true;
             }
         }
-        mod_cw = false;
     }
-    if (mod_pn) {
-        for (int i = 0; i < k; i++) {
-            if (pn[i] != '*') {
-                found = false;
-                for (int j = 0; j < k && !found; j++) {
-                    if (word[j] == pn[i]) {
-                        found = true;
-                    }
-                }
-                if (!found) {
-                    return true;
+    mod_cw = false;
+    return false;
+}
+
+bool checkPresenceNeeded(const char * word, const char * pn, int k) {
+    bool found;
+    for (int i = 0; i < k; i++) {
+        if (pn[i] != '*') {
+            found = false;
+            for (int j = 0; j < k && !found; j++) {
+                if (word[j] == pn[i]) {
+                    found = true;
                 }
             }
+            if (!found) {
+                return true;
+            }
         }
-        mod_pn = true;
     }
+    mod_pn = true;
     return false;
 }
 
@@ -256,13 +256,14 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
     int charCount;
     constraintCell tempConstraint;
 
-    mod_pn = mod_cw = true;
-
-    if (fastCheck(temp, cw, pn, k)) {
+    if (checkCertainWord(temp, cw, k) || checkPresenceNeeded(temp, pn, k)) {
         return true;
     }
 
-    memset(visited, false, k);
+    // memset(visited, false, k);
+    for (int i = 0; i < k; i++) {
+        visited[i] = false;
+    }
 
     for (int i = 0; i < k; i++) {
         if (!visited[i]) {
@@ -302,7 +303,10 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
 }
 
 bool lightCheckBan(constraintCell * constraints, char * word, char *cw, char *pn, int k) {
-    if ((mod_cw || mod_pn) && fastCheck(word, cw, pn, k)) {
+    if (mod_cw && checkCertainWord(word, cw, k)) {
+        return true;
+    }
+    if (mod_pn && checkPresenceNeeded(word, pn, k)) {
         return true;
     }
 
