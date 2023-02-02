@@ -35,7 +35,9 @@ void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
         for (int i = 0; i < CONSTQUANTITY; i++) {
             if (cArr[i].cardinality != -1) {
                 cArr[i].cardinality = -1;
-                memset(cArr[i].presence, 0, length);
+                for (int j = 0; j < length; j++) {
+                    cArr[i].presence[j] = 0;
+                }
                 cArr[i].exact_number = false;
             }
         }
@@ -186,8 +188,10 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
         tempArrCell = cArr[constraintValue];
         if (new_word[i] == ref_word[i]) {
             result_word[i] = '+';
-            certain_word[i] = new_word[i];
-            mod_cw = true;
+            if (certain_word[i] == '*') {
+                mod_cw = true;
+                certain_word[i] = new_word[i];
+            }
             tempArrCell.presence[i] = 1;
         } else {
             exists = false;
@@ -492,18 +496,19 @@ void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST 
     newList(constraints, node->right, root, head, cw, pn, k);
 }
 
-struct nodeRB * searchRB(struct nodeRB *node, char *word) {
-    if (node == NULL) {
-        return node;
+// TODO: Change this, from the internet
+
+struct nodeRB * searchRB(struct nodeRB * node, char * word) {
+    while (node != NULL) {
+        int retCode = strcmp(word, node->word);
+        if (retCode > 0)
+            node = node->right;
+        else if (retCode < 0)
+            node = node->left;
+        else
+            return node;
     }
-    int ret_val = strcmp(word, node->word);
-    if (ret_val < 0) {
-        return searchRB(node->left, word);
-    } else if (ret_val == 0){
-        return node;
-    } else {
-        return searchRB(node->right, word);
-    }
+    return NULL;
 }
 
 int main() {
