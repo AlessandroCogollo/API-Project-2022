@@ -255,30 +255,32 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
     for (int i = 0; i < k; i++) {
         if (!visited[i]) {
             tempConstraint = constraints[constraintMapper(temp[i])];
-            if (tempConstraint.cardinality == -2) {
-                return true;
-            }
-            charCount = 0;
-            for (int z = i; z < k; z++) {
-                if (temp[z] == temp[i]) {
-                    visited[z] = true;
-                    if (tempConstraint.presence[z] == -1) {
-                        return true;
-                    }
-                    charCount++;
-                    if (tempConstraint.exact_number) {
-                        if (tempConstraint.cardinality < charCount) {
+            if (tempConstraint.cardinality != -1) {
+                if (tempConstraint.cardinality == -2) {
+                    return true;
+                }
+                charCount = 0;
+                for (int z = i; z < k; z++) {
+                    if (temp[z] == temp[i]) {
+                        visited[z] = true;
+                        if (tempConstraint.presence[z] == -1) {
                             return true;
+                        }
+                        charCount++;
+                        if (tempConstraint.exact_number) {
+                            if (tempConstraint.cardinality < charCount) {
+                                return true;
+                            }
                         }
                     }
                 }
-            }
-            if (tempConstraint.cardinality > charCount) {
-                return true;
-            } else {
-                if (tempConstraint.exact_number) {
-                    if (tempConstraint.cardinality != charCount) {
-                        return true;
+                if (tempConstraint.cardinality > charCount) {
+                    return true;
+                } else {
+                    if (tempConstraint.exact_number) {
+                        if (tempConstraint.cardinality != charCount) {
+                            return true;
+                        }
                     }
                 }
             }
