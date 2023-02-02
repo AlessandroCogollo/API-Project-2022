@@ -85,7 +85,7 @@ void printList (struct nodeLIST * node) {
 // TODO: change this below, taken from the internet
 
 void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
-	if (strcmp((*root)->word, temp->word) > 0 || *root == NULL) {
+	if (*root == NULL || strcmp((*root)->word, temp->word) > 0) {
 		temp->next = *root;
 		*root = temp;
 		return;
@@ -243,12 +243,12 @@ bool fastCheck(char * word, char * cw, char * pn, int k) {
 }
 
 bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
+    int charCount;
+    constraintCell tempConstraint;
+
     if (fastCheck(temp, cw, pn, k)) {
         return true;
     }
-
-    int charCount;
-    constraintCell tempConstraint;
 
     memset(visited, false, k);
 
@@ -532,7 +532,7 @@ void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct n
 void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
     if (node != NULL) {
         newList(constraints, node->left, root, head, cw, pn, k);
-        if (!lightCheckBan(constraints, node->word, cw, pn, k)) {
+        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
             if (*root == NULL) {
                 *root = newNodeList(node->word);
                 *head = *root;
@@ -647,7 +647,7 @@ int main() {
                             first_time_flag = false;
                         } else {
                             // else, simply ban words
-                            banwords(&rootLIST, certain_word, presences_needed, constraints, k, light_mode);
+                            banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
                             if (light_mode == false) {
                                 light_mode = true;
                             }
