@@ -432,26 +432,30 @@ int getWord(char *temp_word, int length) {
     return 0;
 }
 
-// --------------- RB TREE -----------------
+// --------------- BST TREE -----------------
 
-struct nodeRB {
-    char *word;
-    struct nodeRB *left, *right;
+// TODO: remove test!!!
+struct nodeBST {
+    char * word;
+    char test;
+    struct nodeBST * left;
+    struct nodeBST * right;
 };
 
-struct nodeRB * newNodeRB(char *word) {
-    struct nodeRB * new_node;
-    new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
+struct nodeBST * newNodeRB(char *word) {
+    struct nodeBST * new_node;
+    new_node = (struct nodeBST *) malloc (sizeof (struct nodeBST));
     new_node->word = word;
-    new_node->left = new_node->right = NULL;
+    new_node->left = NULL;
+    new_node->right = NULL;
     return new_node;
 }
 
 // TODO: change this, taken from the internet
-struct nodeRB * insertNodeRB(struct nodeRB * root, char * word) {
-    struct nodeRB * newnode = newNodeRB(word);
-    struct nodeRB * x = root;
-    struct nodeRB * y = NULL;
+struct nodeBST * insertNodeRB(struct nodeBST * root, char * word) {
+    struct nodeBST * newnode = newNodeRB(word);
+    struct nodeBST * x = root;
+    struct nodeBST * y = NULL;
 
     while (x != NULL) {
         y = x;
@@ -471,7 +475,7 @@ struct nodeRB * insertNodeRB(struct nodeRB * root, char * word) {
     return y;
 }
 
-void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
+void newListFiltered(constraintCell * constraints, struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
     if (node != NULL) {
         newListFiltered(constraints, node->left, root, head, cw, pn, k);
         if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
@@ -488,7 +492,7 @@ void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct n
     }
 }
 
-void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
+void newList(constraintCell * constraints, struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
     if (node != NULL) {
         newList(constraints, node->left, root, head, cw, pn, k);
         if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
@@ -507,7 +511,7 @@ void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST 
 
 // TODO: Change this, from the internet
 
-struct nodeRB * searchRB(struct nodeRB * node, char * word) {
+struct nodeBST * searchRB(struct nodeBST * node, char * word) {
     while (node != NULL) {
         int retCode = strcmp(word, node->word);
         if (retCode > 0)
@@ -524,7 +528,7 @@ int main() {
     bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, first_time_flag, light_mode;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
-    struct nodeRB* rootRB = NULL;
+    struct nodeBST* rootRB = NULL;
     struct nodeLIST* rootLIST = NULL;
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];

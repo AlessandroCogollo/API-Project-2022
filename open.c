@@ -109,22 +109,22 @@ void resetList(struct nodeLIST ** root) {
 
 // TODO: check if RB tree is working
 
-struct nodeRB {
+struct nodeBST {
     char *word;
     bool red;
-    struct nodeRB *father, *left, *right;
+    struct nodeBST *father, *left, *right;
 };
 
-struct nodeRB * newNodeBST(char *word) {
-    struct nodeRB * new_node;
-    new_node = (struct nodeRB *) malloc (sizeof (struct nodeRB));
+struct nodeBST * newNodeBST(char *word) {
+    struct nodeBST * new_node;
+    new_node = (struct nodeBST *) malloc (sizeof (struct nodeBST));
     new_node->red = true;
     new_node->word = word;
     new_node->left = new_node->right = new_node->father = NULL;
     return new_node;
 }
 
-struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
+struct nodeBST * insertNodeRB(struct nodeBST *node, char *word) {
     if (node == NULL)
         return newNodeBST(word);
     if (strcmp(word, node->word) < 0) {
@@ -137,8 +137,8 @@ struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
     return node;
 }
 
-void rotateRBLeft(struct nodeRB *root, struct nodeRB *nodeX) {
-    struct nodeRB * nodeY = nodeX->right;
+void rotateRBLeft(struct nodeBST *root, struct nodeBST *nodeX) {
+    struct nodeBST * nodeY = nodeX->right;
     nodeX->right = nodeY->left;
     if (nodeY->left != NULL)
         nodeY->left->father = nodeX;
@@ -154,8 +154,8 @@ void rotateRBLeft(struct nodeRB *root, struct nodeRB *nodeX) {
     nodeX->father = nodeY;
 }
 
-void rotateRBRight(struct nodeRB *root, struct nodeRB *nodeX) {
-    struct nodeRB * nodeY = nodeX->left;
+void rotateRBRight(struct nodeBST *root, struct nodeBST *nodeX) {
+    struct nodeBST * nodeY = nodeX->left;
     nodeX->left = nodeY->right;
     if (nodeY->right != NULL)
         nodeY->right->father = nodeX;
@@ -171,8 +171,8 @@ void rotateRBRight(struct nodeRB *root, struct nodeRB *nodeX) {
     nodeX->father = nodeY;
 }
 
-void fixRBTree(struct nodeRB *root, struct nodeRB *node) {
-    struct nodeRB * temp;
+void fixRBTree(struct nodeBST *root, struct nodeBST *node) {
+    struct nodeBST * temp;
     while (node != root && node->father->red) {
         if (node->father == node->father->father->left) {
             temp = node->father->father->right;
@@ -211,7 +211,7 @@ void fixRBTree(struct nodeRB *root, struct nodeRB *node) {
     root->red = false;
 }
 
-void newList(struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head) {
+void newList(struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head) {
     if (node != NULL) {
         newList(node->left, root, head);
         if (*root == NULL) {
@@ -226,7 +226,7 @@ void newList(struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head
     }
 }
 
-struct nodeRB * searchRB(struct nodeRB *node, char *word) {
+struct nodeBST * searchRB(struct nodeBST *node, char *word) {
     if (node == NULL || strcmp(word, node->word) == 0) {
         return node;
     } else if (strcmp(word, node->word) < 0) {
@@ -539,7 +539,7 @@ int main() {
     bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, lightMode;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
-    struct nodeRB* rootRB = NULL;
+    struct nodeBST* rootRB = NULL;
     struct nodeLIST* rootLIST = NULL;
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
