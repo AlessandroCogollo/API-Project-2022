@@ -449,16 +449,28 @@ struct nodeRB * newNodeRB(char *word) {
     return new_node;
 }
 
-struct nodeRB * insertNodeRB(struct nodeRB *node, char *word) {
-    if (node == NULL)
-        return newNodeRB(word);
-    int retCode = strcmp(word, node->word);
-    if (retCode < 0) {
-        node->left = insertNodeRB(node->left, word);
-    } else if (retCode > 0){
-        node->right = insertNodeRB(node->right, word);
+// TODO: change this, taken from the internet
+struct nodeRB * insertNodeRB(struct nodeRB * root, char * word) {
+    struct nodeRB * newnode = newNodeRB(word);
+    struct nodeRB * x = root;
+    struct nodeRB * y = NULL;
+
+    while (x != NULL) {
+        y = x;
+        if (strcmp(word, x->word) < 0)
+            x = x->left;
+        else
+            x = x->right;
     }
-    return node;
+
+    if (y == NULL)
+        y = newnode;
+    else if (strcmp(word, y->word) < 0)
+        y->left = newnode;
+    else
+        y->right = newnode;
+
+    return y;
 }
 
 void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
@@ -479,21 +491,20 @@ void newListFiltered(constraintCell * constraints, struct nodeRB *node, struct n
 }
 
 void newList(constraintCell * constraints, struct nodeRB *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
-    if (node == NULL) {
-        return;
-    }
-    newList(constraints, node->left, root, head, cw, pn, k);
-    if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
-        if (*root == NULL) {
-            *root = newNodeList(node->word);
-            *head = *root;
-        } else {
-            (*head)->next = newNodeList(node->word);
-            *head = (*head)->next;
+    if (node != NULL) {
+        newList(constraints, node->left, root, head, cw, pn, k);
+        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+            if (*root == NULL) {
+                *root = newNodeList(node->word);
+                *head = *root;
+            } else {
+                (*head)->next = newNodeList(node->word);
+                *head = (*head)->next;
+            }
+            quantity++;
         }
-        quantity++;
+        newList(constraints, node->right, root, head, cw, pn, k);
     }
-    newList(constraints, node->right, root, head, cw, pn, k);
 }
 
 // TODO: Change this, from the internet
