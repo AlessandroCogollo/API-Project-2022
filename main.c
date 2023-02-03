@@ -1,15 +1,15 @@
-#define CONSTQUANTITY 64
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
 
+#define CONSTQUANTITY 64
+
 // TODO: allocate whole pages to speed up
 // TODO: remove global variables
 
 int quantity, *modified_constraints;
-bool * visited, mod_cw, mod_pn;
+bool * visited;
 
 // ----------- CONSTRAINTS --------------
 
@@ -121,13 +121,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
     for (int i = 0; i < length; i++) {
         if (!visited[i]) {
             constraintValue = constraintMapper(new_word[i]);
-            bool end_flag = false;
-            for (int j = 0; j < length && !end_flag; j++) {
-                if (modified_constraints[j] == -1 || modified_constraints[j] == constraintValue) {
-                    modified_constraints[j] = constraintValue;
-                    end_flag = true;
-                }
-            }
             tempCardinality = 0;
             for (int j = i; j < length; j++) {
                 if (new_word[i] == new_word[j]) {
@@ -137,7 +130,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                         certain_word[j] = new_word[j];
                         cArr[constraintValue].presence[j] = 1;
                         tempCardinality++;
-                        mod_cw = true;
                     } else {
                         win_flag = false;
                         if (strchr(ref_word, new_word[j]) == NULL) {
@@ -176,7 +168,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                                             z++;
                                         }
                                         presence_needed[z] = new_word[i];
-                                        mod_pn = true;
                                     }
                                 }
                                 tempCardinality++;
@@ -201,7 +192,6 @@ bool checkCertainWord(const char * word, const char * cw, int k) {
             }
         }
     }
-    mod_cw = false;
     return false;
 }
 
@@ -220,7 +210,6 @@ bool checkPresenceNeeded(const char * word, const char * pn, int k) {
             }
         }
     }
-    mod_pn = false;
     return false;
 }
 
@@ -274,92 +263,24 @@ bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn
     return false;
 }
 
-bool lightCheckBan(constraintCell * constraints, char * word, char *cw, char *pn, int k) {
-    if (mod_cw && checkCertainWord(word, cw, k)) {
-        return true;
-    }
-    if (mod_pn && checkPresenceNeeded(word, pn, k)) {
-        return true;
-    }
-
-    int charCount;
-    constraintCell tempConstraint;
-
-    for (int i = 0; i < k && modified_constraints[i] != -1; i++) {
-        tempConstraint = constraints[modified_constraints[i]];
-        if (tempConstraint.cardinality == -2) {
-            for (int j = 0; j < k; j++) {
-                if (constraintMapper(word[j]) == modified_constraints[i]) {
-                    return true;
-                }
-            }
-        } else {
-            charCount = 0;
-            for (int z = 0; z < k; z++) {
-                if (constraintMapper(word[z]) == modified_constraints[i]) {
-                    charCount++;
-                    if (tempConstraint.presence[z] == -1) {
-                        return true;
-                    }
-                    if (tempConstraint.exact_number) {
-                        if (tempConstraint.cardinality < charCount) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            if (tempConstraint.cardinality > charCount) {
-                return true;
-            } else {
-                if (tempConstraint.exact_number) {
-                    if (tempConstraint.cardinality != charCount) {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k, bool lightMode) {
+void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k) {
     // cw: certain_word, pn: presence_needed
     struct nodeLIST *temp = *root, *prev = NULL;
-    if (lightMode) {
-        while (temp != NULL) {
-            if (lightCheckBan(constraints, temp->word, cw, pn, k)) {
-                if (*root == temp) {
-                    *root = (*root)->next;
-                    free(temp);
-                    temp = *root;
-                } else {
-                    prev->next = temp->next;
-                    free(temp);
-                    temp = prev->next;
-                }
-                quantity--;
+    while (temp != NULL) {
+        if (heavyCheckBan(constraints, temp->word, cw, pn, k)) {
+            if (*root == temp) {
+                *root = (*root)->next;
+                free(temp);
+                temp = *root;
             } else {
-                prev = temp;
-                temp = temp->next;
+                prev->next = temp->next;
+                free(temp);
+                temp = prev->next;
             }
-        }
-    } else {
-        while (temp != NULL) {
-            if (heavyCheckBan(constraints, temp->word, cw, pn, k)) {
-                if (*root == temp) {
-                    *root = (*root)->next;
-                    free(temp);
-                    temp = *root;
-                } else {
-                    prev->next = temp->next;
-                    free(temp);
-                    temp = prev->next;
-                }
-                quantity--;
-            } else {
-                prev = temp;
-                temp = temp->next;
-            }
+            quantity--;
+        } else {
+            prev = temp;
+            temp = temp->next;
         }
     }
 }
@@ -469,7 +390,7 @@ struct nodeBST * searchRB(struct nodeBST * node, char * word) {
 }
 
 int main() {
-    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, light_mode;
+    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootRB = NULL;
@@ -524,7 +445,7 @@ int main() {
 
         i = 0;
         bool list_generated = false;
-        winner_flag = filtered_flag = light_mode = false;
+        winner_flag = filtered_flag = false;
         used_word_flag = true;
 
         do {
@@ -544,7 +465,6 @@ int main() {
                         }
                     }
                     used_word_flag = true;
-                    light_mode = false;
                 } else {
                     if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
@@ -555,10 +475,7 @@ int main() {
                             list_generated = true;
                         } else {
                             // else, simply ban words
-                            banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
-                            if (light_mode == false) {
-                                light_mode = true;
-                            }
+                            banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                         }
                         if (!winner_flag) {
                             printf("%s\n%d\n", result_word, quantity);
@@ -578,8 +495,7 @@ int main() {
                 } else {
                     if (new_insertion_flag) {
                         new_insertion_flag = false;
-                        light_mode = false;
-                        banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
+                        banwords(&rootLIST, certain_word, presences_needed, constraints, k);
                     }
                 }
                 printList(rootLIST);
