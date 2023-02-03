@@ -115,7 +115,7 @@ void resetList(struct nodeLIST ** root) {
 // -------------- UTILS ----------------
 
 bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
-    bool increment_flag, win_flag = true;
+    bool win_flag = true;
     int constraintValue, tempCardinality;
     memset(visited, false, length);
     memset(modified_constraints, -1, length);
@@ -130,7 +130,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                 }
             }
             tempCardinality = 0;
-            increment_flag = true;
             for (int j = i; j < length; j++) {
                 if (new_word[i] == new_word[j]) {
                     visited[j] = true;
@@ -181,10 +180,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                                         mod_pn = true;
                                     }
                                 }
-                                if (increment_flag) {
-                                    increment_flag = false;
-                                    tempCardinality++;
-                                }
+                                tempCardinality++;
                             }
                         }
                     }
