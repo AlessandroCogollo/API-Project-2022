@@ -33,13 +33,11 @@ void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
         }
     } else {
         for (int i = 0; i < CONSTQUANTITY; i++) {
-            if (cArr[i].cardinality != -1) {
-                cArr[i].cardinality = -1;
-                for (int j = 0; j < length; j++) {
-                    cArr[i].presence[j] = 0;
-                }
-                cArr[i].exact_number = false;
+            cArr[i].cardinality = -1;
+            for (int j = 0; j < length; j++) {
+                cArr[i].presence[j] = 0;
             }
+            cArr[i].exact_number = false;
         }
     }
 }
@@ -167,65 +165,70 @@ void updateMinCardinality(char *ref_word, char *new_word, char const *result_wor
 }
 
 bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
-    int constraintValue;
-    bool exists, end_flag, win_flag = true;
-    constraintCell tempArrCell;
-    // TODO : modified constraints might be speeded up by setting a value only when actually modified
+    bool increment_flag, win_flag = true;
+    int constraintValue, tempCardinality;
+    // constraintCell tempConstraint;
+    memset(visited, false, length);
+    memset(modified_constraints, -1, length);
     for (int i = 0; i < length; i++) {
-        modified_constraints[i] = -1;
-    }
-    for (int i = 0; i < length; i++) {
-        constraintValue = constraintMapper(new_word[i]);
-        // ---- SAVE MODIFIED CONSTRAINTS ----
-        end_flag = false;
-        for (int j = 0; j < length && !end_flag; j++) {
-            if (modified_constraints[j] == -1 || modified_constraints[j] == constraintValue) {
-                modified_constraints[j] = constraintValue;
-                end_flag = true;
-            }
-        }
-        // -----------------------------------
-        tempArrCell = cArr[constraintValue];
-        if (new_word[i] == ref_word[i]) {
-            result_word[i] = '+';
-            if (certain_word[i] == '*') {
-                mod_cw = true;
-                certain_word[i] = new_word[i];
-            }
-            tempArrCell.presence[i] = 1;
-        } else {
-            exists = false;
-            for (int j = 0; j < length; j++) {
-                if (new_word[i] == ref_word[j]) {
-                    exists = true;
+        if (!visited[i]) {
+            constraintValue = constraintMapper(new_word[i]);
+            // tempConstraint = cArr[constraintValue];
+            bool end_flag = false;
+            for (int j = 0; j < length && !end_flag; j++) {
+                if (modified_constraints[j] == -1 || modified_constraints[j] == constraintValue) {
+                    modified_constraints[j] = constraintValue;
+                    end_flag = true;
                 }
             }
-            if (!exists || counter(ref_word, new_word, i, length) >= 0) {
-                result_word[i] = '/';
-                tempArrCell.presence[i] = -1;
-                if (tempArrCell.cardinality != -1) {
-                    tempArrCell.exact_number = true;
-                } else {
-                    tempArrCell.cardinality = -2;
-                }
-            } else {
-                result_word[i] = '|';
-                if (strchr(presence_needed, new_word[i]) == NULL) {
-                    if (strchr(certain_word, new_word[i]) == NULL) {
-                        int z = 0;
-                        while (presence_needed[z] != '*' && z < length) {
-                            z++;
+            tempCardinality = 0;
+            increment_flag = true;
+            for (int j = i; j < length; j++) {
+                if (new_word[i] == new_word[j]) {
+                    visited[j] = true;
+                    if (new_word[j] == ref_word[j]) {
+                        result_word[j] = '+';
+                        certain_word[j] = new_word[j];
+                        mod_cw = true;
+                        tempCardinality++;
+                    } else {
+                        win_flag = false;
+                        if (strchr(ref_word, new_word[j]) == NULL || counter(ref_word, new_word, j, length) >= 0) {
+                            result_word[j] = '/';
+                            cArr[constraintValue].presence[j] = -1;
+                            if (strchr(ref_word, new_word[j]) == NULL) {
+                                cArr[constraintValue].cardinality = -2;
+                            } else if (counter(ref_word, new_word, i, length) >= 0) {
+                                cArr[constraintValue].exact_number = true;
+                                tempCardinality++;
+                                increment_flag = false;
+                            }
+                        } else {
+                            result_word[j] = '|';
+                            cArr[constraintValue].presence[j] = -1;
+                            if (strchr(presence_needed, new_word[i]) == NULL) {
+                                if (strchr(certain_word, new_word[i]) == NULL) {
+                                    int z = 0;
+                                    while (presence_needed[z] != '*' && z < length) {
+                                        z++;
+                                    }
+                                    presence_needed[z] = new_word[i];
+                                    mod_pn = true;
+                                }
+                            }
+                            if (increment_flag) {
+                                tempCardinality++;
+                                increment_flag = false;
+                            }
                         }
-                        presence_needed[z] = new_word[i];
-                        mod_pn = true;
                     }
                 }
-                tempArrCell.presence[i] = -1;
             }
-            win_flag = false;
+            if (tempCardinality > cArr[constraintValue].cardinality && cArr[constraintValue].cardinality != -2) {
+                cArr[constraintValue].cardinality = tempCardinality;
+            }
         }
     }
-    updateMinCardinality(ref_word, new_word, result_word, cArr);
     return win_flag;
 }
 
@@ -532,6 +535,8 @@ int main() {
     struct nodeLIST* rootLIST = NULL;
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
+
+    // printf("a: %d\n", constraintMapper('a'));
 
     // acquire length:
     rc = scanf("%d\n", &k);
