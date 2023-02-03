@@ -502,12 +502,6 @@ int main() {
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
-    /*
-    printf("z: %d\n", constraintMapper('P'));
-    printf("z: %d\n", constraintMapper('z'));
-    printf("2: %d\n", constraintMapper('2'));
-    */
-
     // acquire length:
     rc = scanf("%d\n", &k);
     rc = rc + 1;
@@ -536,8 +530,6 @@ int main() {
     visited = (bool *) malloc (sizeof(bool) * k);
 
     new_insertion_flag = false;
-
-    // generate new list
 
     // new game begins
     do {
@@ -568,15 +560,10 @@ int main() {
             if (code == 0) {
                 if (filtered_flag) {
                     insertNodeRB(rootRB, temp_word);
-                    if(first_time_flag) {
-                        newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
-                        first_time_flag = false;
-                    } else {
-                        if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
-                            quantity++;
-                            struct nodeLIST * tempNode = newNodeList(temp_word);
-                            insertNode(&rootLIST, tempNode);
-                        }
+                    if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
+                        quantity++;
+                        struct nodeLIST * tempNode = newNodeList(temp_word);
+                        insertNode(&rootLIST, tempNode);
                     }
                     used_word_flag = true;
                     light_mode = false;
