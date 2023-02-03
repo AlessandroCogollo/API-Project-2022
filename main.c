@@ -494,7 +494,7 @@ struct nodeBST * searchRB(struct nodeBST * node, char * word) {
 }
 
 int main() {
-    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, first_time_flag, light_mode;
+    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag, light_mode;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootRB = NULL;
@@ -548,8 +548,9 @@ int main() {
         }
 
         i = 0;
+        bool list_generated = false;
         winner_flag = filtered_flag = light_mode = false;
-        used_word_flag = first_time_flag = true;
+        used_word_flag = true;
 
         do {
             if (used_word_flag) {
@@ -560,7 +561,7 @@ int main() {
             if (code == 0) {
                 if (filtered_flag) {
                     insertNodeRB(rootRB, temp_word);
-                    if (!first_time_flag) {
+                    if (list_generated) {
                         if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
                             quantity++;
                             struct nodeLIST * tempNode = newNodeList(temp_word);
@@ -573,10 +574,10 @@ int main() {
                     if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
-                        if (first_time_flag) {
+                        if (!list_generated) {
                             // if its the first time of a new game, init list by removing words
                             newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
-                            first_time_flag = false;
+                            list_generated = true;
                         } else {
                             // else, simply ban words
                             banwords(&rootLIST, certain_word, presences_needed, constraints, k, false);
@@ -595,10 +596,10 @@ int main() {
                     }
                 }
             } else if (code == 2) {
-                if (first_time_flag) {
+                if (!list_generated) {
                     // if its the first time of a new game, init list by removing words
                     newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
-                    first_time_flag = false;
+                    list_generated = true;
                 } else {
                     if (new_insertion_flag) {
                         new_insertion_flag = false;
