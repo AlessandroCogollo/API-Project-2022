@@ -403,10 +403,8 @@ int getWord(char *temp_word, int length) {
 
 // --------------- BST TREE -----------------
 
-// TODO: remove test!!!
 struct nodeBST {
     char * word;
-    // char test;
     struct nodeBST * left;
     struct nodeBST * right;
 };
