@@ -560,10 +560,12 @@ int main() {
             if (code == 0) {
                 if (filtered_flag) {
                     insertNodeRB(rootRB, temp_word);
-                    if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
-                        quantity++;
-                        struct nodeLIST * tempNode = newNodeList(temp_word);
-                        insertNode(&rootLIST, tempNode);
+                    if (!first_time_flag) {
+                        if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
+                            quantity++;
+                            struct nodeLIST * tempNode = newNodeList(temp_word);
+                            insertNode(&rootLIST, tempNode);
+                        }
                     }
                     used_word_flag = true;
                     light_mode = false;
