@@ -461,25 +461,7 @@ void newListFiltered(constraintCell * constraints, struct nodeBST *node, struct 
     }
 }
 
-void newList(constraintCell * constraints, struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
-    if (node != NULL) {
-        newList(constraints, node->left, root, head, cw, pn, k);
-        if (!lightCheckBan(constraints, node->word, cw, pn, k)) {
-            if (*root == NULL) {
-                *root = newNodeList(node->word);
-                *head = *root;
-            } else {
-                (*head)->next = newNodeList(node->word);
-                *head = (*head)->next;
-            }
-            quantity++;
-        }
-        newList(constraints, node->right, root, head, cw, pn, k);
-    }
-}
-
 // TODO: Change this, from the internet
-
 struct nodeBST * searchRB(struct nodeBST * node, char * word) {
     while (node != NULL) {
         int retCode = strcmp(word, node->word);
