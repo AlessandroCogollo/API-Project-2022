@@ -87,7 +87,6 @@ void printList (struct nodeLIST * node) {
 }
 
 // TODO: change this below, taken from the internet
-
 void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
 	if (*root == NULL || strcmp((*root)->word, temp->word) > 0) {
 		temp->next = *root;
@@ -221,7 +220,7 @@ bool checkPresenceNeeded(const char * word, const char * pn, int k) {
             }
         }
     }
-    mod_pn = true;
+    mod_pn = false;
     return false;
 }
 
