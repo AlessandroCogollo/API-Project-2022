@@ -114,66 +114,14 @@ void resetList(struct nodeLIST ** root) {
 
 // -------------- UTILS ----------------
 
-int counter(const char * wordRef, const char wordP[], int pos, int k) {
-    int n = 0, c = 0, d = 0;
-    for (int i = k; i >= 0; i--) {
-        if (wordRef[i] == wordP[pos]) {
-            n++;
-            if (wordRef[i] == wordP[i]) {
-                c++;
-            }
-        }
-    }
-    for (int j = 0; j < pos; j++) {
-        if (wordP[j] == wordP[pos] && wordRef[j] != wordP[j]) {
-            d++;
-        }
-    }
-    if (d >= (n-c)) {
-        return d;
-    } else {
-        return -1;
-    }
-}
-
-// TODO: speed this up
-void updateMinCardinality(char *ref_word, char *new_word, char const *result_word, constraintCell *cArr) {
-    int counter, val;
-    bool incr_flag;
-    for (int i = 0; i < strlen(ref_word); i++) {
-        incr_flag = true;
-        counter = 0;
-        val = constraintMapper(new_word[i]);
-        for (int j = 0; j < strlen(ref_word); j++) {
-            if (new_word[j] == new_word[i]) {
-                if (result_word[j] == '/' && cArr[val].presence > 0) {
-                    cArr[val].exact_number = true;
-                } else if (result_word[j] == '+') {
-                    counter++;
-                } else {
-                    if (incr_flag) {
-                        counter++;
-                        incr_flag = false;
-                    }
-                }
-            }
-        }
-        if (counter > cArr[val].cardinality) {
-            cArr[val].cardinality = counter;
-        }
-    }
-}
-
 bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
     bool increment_flag, win_flag = true;
     int constraintValue, tempCardinality;
-    // constraintCell tempConstraint;
     memset(visited, false, length);
     memset(modified_constraints, -1, length);
     for (int i = 0; i < length; i++) {
         if (!visited[i]) {
             constraintValue = constraintMapper(new_word[i]);
-            // tempConstraint = cArr[constraintValue];
             bool end_flag = false;
             for (int j = 0; j < length && !end_flag; j++) {
                 if (modified_constraints[j] == -1 || modified_constraints[j] == constraintValue) {
@@ -194,31 +142,49 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                         mod_cw = true;
                     } else {
                         win_flag = false;
-                        if (strchr(ref_word, new_word[j]) == NULL || counter(ref_word, new_word, j, length) >= 0) {
+                        if (strchr(ref_word, new_word[j]) == NULL) {
                             result_word[j] = '/';
                             cArr[constraintValue].presence[j] = -1;
-                            if (strchr(ref_word, new_word[j]) == NULL) {
-                                cArr[constraintValue].cardinality = -2;
-                            } else if (counter(ref_word, new_word, i, length) >= 0) {
-                                cArr[constraintValue].exact_number = true;
-                                increment_flag = false;
-                            }
+                            cArr[constraintValue].cardinality = -2;
                         } else {
-                            result_word[j] = '|';
-                            cArr[constraintValue].presence[j] = -1;
-                            if (strchr(presence_needed, new_word[i]) == NULL) {
-                                if (strchr(certain_word, new_word[i]) == NULL) {
-                                    int z = 0;
-                                    while (presence_needed[z] != '*' && z < length) {
-                                        z++;
+                            int d, n, c;
+                            d = n = c = 0;
+                            for (int t = 0; t < length; t++) {
+                                if (ref_word[t] == new_word[i]) {
+                                    n++;
+                                    if (ref_word[t] == new_word[t]) {
+                                        c++;
                                     }
-                                    presence_needed[z] = new_word[i];
-                                    mod_pn = true;
                                 }
                             }
-                            if (increment_flag) {
-                                increment_flag = false;
-                                tempCardinality++;
+                            for (int t = 0; t < j; t++) {
+                                if (new_word[t] == new_word[i]) {
+                                    if (new_word[t] != ref_word[t]) {
+                                        d++;
+                                    }
+                                }
+                            }
+                            if (d >= (n-c)) {
+                                result_word[j] = '/';
+                                cArr[constraintValue].presence[j] = -1;
+                                cArr[constraintValue].exact_number = true;
+                            } else {
+                                result_word[j] = '|';
+                                cArr[constraintValue].presence[j] = -1;
+                                if (strchr(presence_needed, new_word[i]) == NULL) {
+                                    if (strchr(certain_word, new_word[i]) == NULL) {
+                                        int z = 0;
+                                        while (presence_needed[z] != '*' && z < length) {
+                                            z++;
+                                        }
+                                        presence_needed[z] = new_word[i];
+                                        mod_pn = true;
+                                    }
+                                }
+                                if (increment_flag) {
+                                    increment_flag = false;
+                                    tempCardinality++;
+                                }
                             }
                         }
                     }
@@ -440,7 +406,7 @@ int getWord(char *temp_word, int length) {
 // TODO: remove test!!!
 struct nodeBST {
     char * word;
-    char test;
+    // char test;
     struct nodeBST * left;
     struct nodeBST * right;
 };

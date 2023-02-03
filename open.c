@@ -111,7 +111,7 @@ void resetList(struct nodeLIST ** root) {
 
 struct nodeBST {
     char *word;
-    bool red;
+    //bool red;
     struct nodeBST *father, *left, *right;
 };
 
