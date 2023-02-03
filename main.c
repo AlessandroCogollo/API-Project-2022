@@ -464,7 +464,7 @@ void newListFiltered(constraintCell * constraints, struct nodeBST *node, struct 
 void newList(constraintCell * constraints, struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
     if (node != NULL) {
         newList(constraints, node->left, root, head, cw, pn, k);
-        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+        if (!lightCheckBan(constraints, node->word, cw, pn, k)) {
             if (*root == NULL) {
                 *root = newNodeList(node->word);
                 *head = *root;
@@ -502,7 +502,11 @@ int main() {
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
-    // printf("m: %d\n", constraintMapper('m'));
+    /*
+    printf("z: %d\n", constraintMapper('P'));
+    printf("z: %d\n", constraintMapper('z'));
+    printf("2: %d\n", constraintMapper('2'));
+    */
 
     // acquire length:
     rc = scanf("%d\n", &k);
@@ -558,17 +562,21 @@ int main() {
         do {
             if (used_word_flag) {
                 temp_word = (char *) malloc(sizeof(char) * k);
-                // abilitate this -> fixRBTree(rootRB, rootRB);
                 used_word_flag = false;
             }
             code = getWord(temp_word, k);
             if (code == 0) {
                 if (filtered_flag) {
                     insertNodeRB(rootRB, temp_word);
-                    if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
-                        quantity++;
-                        struct nodeLIST * tempNode = newNodeList(temp_word);
-                        insertNode(&rootLIST, tempNode);
+                    if(first_time_flag) {
+                        newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                        first_time_flag = false;
+                    } else {
+                        if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
+                            quantity++;
+                            struct nodeLIST * tempNode = newNodeList(temp_word);
+                            insertNode(&rootLIST, tempNode);
+                        }
                     }
                     used_word_flag = true;
                     light_mode = false;
