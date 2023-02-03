@@ -189,8 +189,9 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                     if (new_word[j] == ref_word[j]) {
                         result_word[j] = '+';
                         certain_word[j] = new_word[j];
-                        mod_cw = true;
+                        cArr[constraintValue].presence[j] = 1;
                         tempCardinality++;
+                        mod_cw = true;
                     } else {
                         win_flag = false;
                         if (strchr(ref_word, new_word[j]) == NULL || counter(ref_word, new_word, j, length) >= 0) {
@@ -200,7 +201,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                                 cArr[constraintValue].cardinality = -2;
                             } else if (counter(ref_word, new_word, i, length) >= 0) {
                                 cArr[constraintValue].exact_number = true;
-                                tempCardinality++;
                                 increment_flag = false;
                             }
                         } else {
@@ -217,14 +217,14 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                                 }
                             }
                             if (increment_flag) {
-                                tempCardinality++;
                                 increment_flag = false;
+                                tempCardinality++;
                             }
                         }
                     }
                 }
             }
-            if (tempCardinality > cArr[constraintValue].cardinality && cArr[constraintValue].cardinality != -2) {
+            if (cArr[constraintValue].cardinality >= -1 && tempCardinality > cArr[constraintValue].cardinality) {
                 cArr[constraintValue].cardinality = tempCardinality;
             }
         }
@@ -536,7 +536,7 @@ int main() {
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
 
-    // printf("a: %d\n", constraintMapper('a'));
+    // printf("m: %d\n", constraintMapper('m'));
 
     // acquire length:
     rc = scanf("%d\n", &k);
