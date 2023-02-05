@@ -8,8 +8,12 @@
 // TODO: allocate whole pages to speed up
 // TODO: remove global variables
 
-int quantity, *modified_constraints;
+int quantity;
 bool * visited;
+bool appliedConstraints[CONSTQUANTITY];
+bool mod_pn, mod_cw;
+// mod_pn is true if presence_needed was modified
+// mod_cw is true if certain_word was modified
 
 // ----------- CONSTRAINTS --------------
 
@@ -117,7 +121,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
     bool win_flag = true;
     int constraintValue, tempCardinality;
     memset(visited, false, length);
-    memset(modified_constraints, -1, length);
     for (int i = 0; i < length; i++) {
         if (!visited[i]) {
             constraintValue = constraintMapper(new_word[i]);
@@ -130,11 +133,11 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                         certain_word[j] = new_word[j];
                         cArr[constraintValue].presence[j] = 1;
                         tempCardinality++;
+                        mod_cw = true;
                     } else {
                         win_flag = false;
                         if (strchr(ref_word, new_word[j]) == NULL) {
                             result_word[j] = '/';
-                            cArr[constraintValue].presence[j] = -1;
                             cArr[constraintValue].cardinality = -2;
                         } else {
                             int d, n, c;
@@ -168,6 +171,7 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                                             z++;
                                         }
                                         presence_needed[z] = new_word[i];
+                                        mod_pn = true;
                                     }
                                 }
                                 tempCardinality++;
@@ -215,7 +219,7 @@ bool checkPresenceNeeded(const char * word, const char * pn, int k) {
 
 bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
 
-    if (checkCertainWord(temp, cw, k) || checkPresenceNeeded(temp, pn, k)) {
+    if ((mod_cw && checkCertainWord(temp, cw, k)) || (mod_pn && checkPresenceNeeded(temp, pn, k))) {
         return true;
     }
 
@@ -422,7 +426,6 @@ int main() {
     result_word = (char *) malloc(sizeof(char) * k);
     certain_word = (char *) malloc(sizeof(char) * k);
     presences_needed = (char *) malloc(sizeof(char) * k);
-    modified_constraints = (int *) malloc(sizeof(int) * k);
     visited = (bool *) malloc (sizeof(bool) * k);
 
     new_insertion_flag = false;
@@ -458,11 +461,13 @@ int main() {
                 if (filtered_flag) {
                     insertNodeRB(rootRB, temp_word);
                     if (list_generated) {
+                        mod_pn = mod_cw = true;
                         if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
                             quantity++;
                             struct nodeLIST * tempNode = newNodeList(temp_word);
                             insertNode(&rootLIST, tempNode);
                         }
+                        mod_pn = mod_cw = false;
                     }
                     used_word_flag = true;
                 } else {
@@ -471,11 +476,14 @@ int main() {
                         winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
                         if (!list_generated) {
                             // if its the first time of a new game, init list by removing words
+                            mod_pn = mod_cw = true;
                             newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
                             list_generated = true;
+                            mod_pn = mod_cw = false;
                         } else {
                             // else, simply ban words
                             banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                            mod_pn = mod_cw = false;
                         }
                         if (!winner_flag) {
                             printf("%s\n%d\n", result_word, quantity);
@@ -490,12 +498,15 @@ int main() {
             } else if (code == 2) {
                 if (!list_generated) {
                     // if its the first time of a new game, init list by removing words
+                    mod_pn = mod_cw = true;
                     newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                    mod_pn = mod_cw = false;
                     list_generated = true;
                 } else {
                     if (new_insertion_flag) {
                         new_insertion_flag = false;
                         banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                        mod_pn = mod_cw = false;
                     }
                 }
                 printList(rootLIST);
