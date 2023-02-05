@@ -130,10 +130,12 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                     visited[j] = true;
                     if (new_word[j] == ref_word[j]) {
                         result_word[j] = '+';
-                        certain_word[j] = new_word[j];
                         cArr[constraintValue].presence[j] = 1;
                         tempCardinality++;
-                        mod_cw = true;
+                        if (certain_word[j] != new_word[j]) {
+                            certain_word[j] = new_word[j];
+                            mod_cw = true;
+                        }
                     } else {
                         win_flag = false;
                         if (strchr(ref_word, new_word[j]) == NULL) {
