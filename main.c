@@ -10,7 +10,6 @@
 
 int quantity;
 bool * visited;
-bool appliedConstraints[CONSTQUANTITY];
 bool mod_pn, mod_cw;
 // mod_pn is true if presence_needed was modified
 // mod_cw is true if certain_word was modified
@@ -130,7 +129,6 @@ bool compare(char *ref_word, char *new_word, char *result_word, char *certain_wo
                     visited[j] = true;
                     if (new_word[j] == ref_word[j]) {
                         result_word[j] = '+';
-                        cArr[constraintValue].presence[j] = 1;
                         tempCardinality++;
                         if (certain_word[j] != new_word[j]) {
                             certain_word[j] = new_word[j];
