@@ -340,7 +340,7 @@ struct nodeBST * newNodeRB(char *word, int k) {
 }
 
 // TODO: change this, taken from the internet
-struct nodeBST * insertNodeRB(struct nodeBST * root, char * word, int k) {
+struct nodeBST * insertNodeRB(struct nodeBST * root, char * word, int k, struct nodeBST ** wordPointer) {
     struct nodeBST * newnode = newNodeRB(word, k);
     struct nodeBST * x = root;
     struct nodeBST * y = NULL;
@@ -359,7 +359,7 @@ struct nodeBST * insertNodeRB(struct nodeBST * root, char * word, int k) {
         y->left = newnode;
     else
         y->right = newnode;
-
+    *wordPointer = newnode;
     return y;
 }
 
@@ -395,10 +395,11 @@ struct nodeBST * searchRB(struct nodeBST * node, char * word) {
 }
 
 int main() {
-    bool winner_flag, filtered_flag, new_insertion_flag, used_word_flag;
+    bool winner_flag, filtered_flag, new_insertion_flag;
     int i, k, n, code, rc;
     char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
     struct nodeBST* rootRB = NULL;
+    struct nodeBST* wordPointer = NULL;
     struct nodeLIST* rootLIST = NULL;
     struct nodeLIST* headLIST = NULL;
     constraintCell constraints[CONSTQUANTITY];
@@ -413,9 +414,9 @@ int main() {
         code = getWord(temp_word, k);
         if (code == 0) {
             if (rootRB == NULL) {
-                rootRB = insertNodeRB(rootRB, temp_word, k);
+                rootRB = insertNodeRB(rootRB, temp_word, k, &wordPointer);
             } else {
-                insertNodeRB(rootRB, temp_word, k);
+                insertNodeRB(rootRB, temp_word, k, &wordPointer);
             }
         }
     } while (code == 0);
@@ -450,27 +451,21 @@ int main() {
         i = 0;
         bool list_generated = false;
         winner_flag = filtered_flag = false;
-        used_word_flag = true;
 
         do {
-            if (used_word_flag) {
-                temp_word = (char *) malloc(sizeof(char) * k);
-                used_word_flag = false;
-            }
             code = getWord(temp_word, k);
             if (code == 0) {
                 if (filtered_flag) {
-                    insertNodeRB(rootRB, temp_word, k);
+                    insertNodeRB(rootRB, temp_word, k, &wordPointer);
                     if (list_generated) {
                         mod_pn = mod_cw = true;
                         if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
                             quantity++;
-                            struct nodeLIST * tempNode = newNodeList(temp_word);
+                            struct nodeLIST * tempNode = newNodeList(wordPointer->word);
                             insertNode(&rootLIST, tempNode);
                         }
                         mod_pn = mod_cw = false;
                     }
-                    used_word_flag = true;
                 } else {
                     if (searchRB(rootRB, temp_word) != NULL) {
                         new_insertion_flag = false;
@@ -523,14 +518,11 @@ int main() {
             printf("ko\n");
         }
 
-        // used_word_flag = true;
-
         do {
             code = getWord(temp_word, k);
             switch (code) {
                 case 0:
-                    insertNodeRB(rootRB, temp_word, k);
-                    used_word_flag = true;
+                    insertNodeRB(rootRB, temp_word, k, &wordPointer);
                     break;
                 case 1:
                     resetList(&rootLIST);
