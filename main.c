@@ -523,13 +523,9 @@ int main() {
             printf("ko\n");
         }
 
-        used_word_flag = true;
+        // used_word_flag = true;
 
         do {
-            if (used_word_flag) {
-                temp_word = (char *) malloc(sizeof(char) * k);
-                used_word_flag = false;
-            }
             code = getWord(temp_word, k);
             switch (code) {
                 case 0:
