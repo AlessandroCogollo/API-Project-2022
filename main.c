@@ -329,18 +329,19 @@ struct nodeBST {
     struct nodeBST * right;
 };
 
-struct nodeBST * newNodeRB(char *word) {
+struct nodeBST * newNodeRB(char *word, int k) {
     struct nodeBST * new_node;
-    new_node = (struct nodeBST *) malloc (sizeof (struct nodeBST));
-    new_node->word = word;
+    new_node = (struct nodeBST *) malloc (sizeof (struct nodeBST) + sizeof(char) * k);
+    new_node->word = (char *)(new_node + 1);
+    strcpy(new_node->word, word);
     new_node->left = NULL;
     new_node->right = NULL;
     return new_node;
 }
 
 // TODO: change this, taken from the internet
-struct nodeBST * insertNodeRB(struct nodeBST * root, char * word) {
-    struct nodeBST * newnode = newNodeRB(word);
+struct nodeBST * insertNodeRB(struct nodeBST * root, char * word, int k) {
+    struct nodeBST * newnode = newNodeRB(word, k);
     struct nodeBST * x = root;
     struct nodeBST * y = NULL;
 
@@ -407,14 +408,14 @@ int main() {
     rc = rc + 1;
 
     // acquire words:
+    temp_word = (char *) malloc(sizeof(char) * k);
     do {
-        temp_word = (char *) malloc(sizeof(char) * k);
         code = getWord(temp_word, k);
         if (code == 0) {
             if (rootRB == NULL) {
-                rootRB = insertNodeRB(rootRB, temp_word);
+                rootRB = insertNodeRB(rootRB, temp_word, k);
             } else {
-                insertNodeRB(rootRB, temp_word);
+                insertNodeRB(rootRB, temp_word, k);
             }
         }
     } while (code == 0);
@@ -459,7 +460,7 @@ int main() {
             code = getWord(temp_word, k);
             if (code == 0) {
                 if (filtered_flag) {
-                    insertNodeRB(rootRB, temp_word);
+                    insertNodeRB(rootRB, temp_word, k);
                     if (list_generated) {
                         mod_pn = mod_cw = true;
                         if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
@@ -532,7 +533,7 @@ int main() {
             code = getWord(temp_word, k);
             switch (code) {
                 case 0:
-                    insertNodeRB(rootRB, temp_word);
+                    insertNodeRB(rootRB, temp_word, k);
                     used_word_flag = true;
                     break;
                 case 1:
