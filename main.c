@@ -3,503 +3,543 @@
 #include <string.h>
 #include <malloc.h>
 
-#define LENGTH 64
+#define CONSTQUANTITY 64
 
-// ------------- GLOBAL VARIABLES ----------------
+// TODO: allocate whole pages to speed up
+// TODO: remove global variables
 
-// TODO: Change cstr and make it local!
-int k, * visited, comp_word;
-char * result, * word_array;
-bool * is_present;
-bool * not_present;
-bool exac_flag = false;
-bool winner_flag = false;
-char * secure_word;
-struct constraint *cstr[LENGTH];
-struct Trie* root;
+int quantity;
+bool * visited;
+bool mod_pn, mod_cw;
+// mod_pn is true if presence_needed was modified
+// mod_cw is true if certain_word was modified
+
+// ----------- CONSTRAINTS --------------
+
+typedef struct {
+    // not present: -1, not initialized: 0, present: 1
+    int *presence;
+    // doesn't belong: -2, not initialized: -1
+    int cardinality;
+    bool exact_number;
+} constraintCell;
+
+void resetConstraints(constraintCell * cArr, int length, bool firstTime) {
+    if (firstTime) {
+        for (int i = 0; i < CONSTQUANTITY; i++) {
+            cArr[i].presence = (int *) malloc (sizeof(int) * length);
+            cArr[i].cardinality = -1;
+            for (int j = 0; j < length; j++) {
+                cArr[i].presence[j] = 0;
+            }
+            cArr[i].exact_number = false;
+        }
+    } else {
+        for (int i = 0; i < CONSTQUANTITY; i++) {
+            cArr[i].cardinality = -1;
+            for (int j = 0; j < length; j++) {
+                cArr[i].presence[j] = 0;
+            }
+            cArr[i].exact_number = false;
+        }
+    }
+}
+
+int constraintMapper(char character) {
+    int ASCII_value = (int) character;
+    if (ASCII_value > 64 && ASCII_value < 91) {
+        // Capital Letters (0 - 25)
+        ASCII_value = ASCII_value - 65;
+    } else if (ASCII_value > 96 && ASCII_value < 123) {
+        // Lowercase Letters (26 - 50)
+        ASCII_value = ASCII_value - 71;
+    } else if (ASCII_value > 47 && ASCII_value < 58) {
+        // Numbers (51 - 60)
+        ASCII_value = ASCII_value + 4;
+    } else if (ASCII_value == 45) {
+        // Minus
+        ASCII_value = 62;
+    } else if (ASCII_value == 95) {
+        // Lower bar
+        ASCII_value = 63;
+    }
+    return ASCII_value;
+}
+
+// -------------- LIST -----------------
+
+struct nodeLIST {
+    char *word;
+    struct nodeLIST *next;
+};
+
+struct nodeLIST * newNodeList(char *word) {
+    struct nodeLIST * new_node;
+    new_node = (struct nodeLIST *) malloc (sizeof(struct nodeLIST));
+    new_node->word = word;
+    new_node->next = NULL;
+    return new_node;
+}
+
+void printList (struct nodeLIST * node) {
+    struct nodeLIST *temp = node;
+    while (temp != NULL) {
+        printf("%s\n", temp->word);
+        temp = temp->next;
+    }
+}
+
+// TODO: change this below, taken from the internet
+void insertNode(struct nodeLIST ** root, struct nodeLIST * temp) {
+	if (*root == NULL || strcmp((*root)->word, temp->word) > 0) {
+		temp->next = *root;
+		*root = temp;
+		return;
+	}
+    struct nodeLIST* current = *root;
+	while (current->next != NULL && strcmp(current->next->word, temp->word) < 0)
+		current = current->next;
+
+	temp->next = current->next;
+	current->next = temp;
+}
+
+void resetList(struct nodeLIST ** root) {
+    struct nodeLIST * temp = *root, * succ;
+    while (temp != NULL) {
+        succ = temp->next;
+        free(temp);
+        temp = succ;
+    }
+    * root = NULL;
+}
 
 // -------------- UTILS ----------------
 
-int wordHandler(char *pointer) {
-    char tmp_word[20], read_char;
-    int i = 0;
-    memset(tmp_word, '\0', 20);
-    do {
-        read_char = (char) getchar_unlocked();
-        if (read_char != 10 && read_char != EOF) {
-            tmp_word[i] = read_char;
-        } else if (read_char == EOF) {
-            // return end of game
-            return 5;
-        }
-        i++;
-    } while (read_char != 10);
-    // tmp_word[i] = '\n';
-    strcpy(pointer, tmp_word);
-    if (i == k + 1) {
-        return 0; // word is returned
-    } else {
-        // pointer = NULL;
-        if (strcmp(tmp_word, "+inserisci_inizio") == 0) {
-            return 1; // word is + inserisci_inizio
-        } else if (strcmp(tmp_word, "+inserisci_fine") == 0) {
-            return 2; // word is +inserisci_fine
-        } else if (strcmp(tmp_word, "+stampa_filtrate") == 0) {
-            return 3; // word is +stampa_filtrate
-        } else {
-            return 4; // word is +nuova_partita
-        }
-    }
-}
-
-bool counter(const char wordRef[], const char wordP[], int pos) {
-    int n = 0, c = 0, d = 0;
-    for (int i = k - 1; i >= 0; i--) {
-        if (wordRef[i] == wordP[pos]) {
-            n++;
-            if (wordRef[i] == wordP[i]) {
-                c++;
-            }
-        }
-    }
-    for (int j = 0; j < pos; j++) {
-        if (wordP[j] == wordP[pos] && wordRef[j] != wordP[j]) {
-            d++;
-        }
-    }
-    if (d >= (n-c)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-// -------------- BST constraints ----------------
-
-struct constraint {
-    char symbol;
-    bool belongs;
-    bool *not_present;
-    int min_number;
-    int exact_number;
-};
-
-int lookUpFunction(char symbol) {
-    int value = (int) symbol;
-    if (value >= 65 && value <= 90) {
-        value = value - 65;
-    } else if (value >= 97 && value <= 122) {
-        value = value - 71;
-    } else if (value >= 48 && value <= 57) {
-        value = value + 4;
-    } else if (value == 45) {
-        // char: -
-        value = 62;
-    } else if (value == 95) {
-        value = 63;
-    }
-    return value;
-}
-
-char inverseLookUp(int value) {
-    char temp = (char) value;
-    if (value >= 0 && value <= 25) {
-        value;
-    } else if (value >= 97 && value <= 122) {
-        value = value - 71;
-    } else if (value >= 48 && value <= 57) {
-        value = value + 4;
-    } else if (value == 45) {
-        // char: -
-        value = 62;
-    } else if (value == 95) {
-        value = 63;
-    }
-    return value;
-}
-
-struct constraint* isPresent(char symbol) {
-    int value = lookUpFunction(symbol);
-    if (cstr[value] != NULL) {
-        return cstr[value];
-    } else {
-        return NULL;
-    }
-}
-
-struct constraint *newConstraint(char symbol, int b, int min, int exac) {
-    // TODO: change the way nodes (both constraints and words are allocated):
-    //    instead of this --> node = malloc(sizeof(node))
-    //      node->string = malloc(sizeof(char)*length)
-    //    do this --> malloc(sizeof(node)+sizeof(char)*length)
-
-    struct constraint * temp = (struct constraint *)malloc(sizeof(struct constraint));
-    temp->symbol = symbol;
-    temp->belongs = b;
-    temp->not_present = (bool *) malloc(sizeof(bool) * k);
-    for (int i = 0; i < k; i++) {
-        temp->not_present[i] = false;
-    }
-    temp->min_number = min;
-    temp->exact_number = exac;
-    return temp;
-}
-
-// --------------- BST structure -----------------
-
-struct Trie {
-    int isLeaf; // 1 quando il nodo è un nodo foglia
-    int heigth;
-    bool isCompatible;
-    struct Trie* character[LENGTH];
-};
-
-struct Trie* getNewTrieNode(int height) {
-    struct Trie* node = (struct Trie*)malloc(sizeof(struct Trie));
-    node->isLeaf = 0;
-    node->heigth = height;
-    node->isCompatible = true;
-    for (int i = 0; i < LENGTH; i++) {
-        node->character[i] = NULL;
-    }
-    return node;
-}
-
-void insert(struct Trie *head, char* str) {
-    struct Trie* curr = head;
-    int pos = 0;
-    while (*str) {
-        if (curr->character[lookUpFunction(*str)] == NULL) {
-            curr->character[lookUpFunction(*str)] = getNewTrieNode(pos);
-        }
-        curr = curr->character[lookUpFunction(*str)];
-        str++;
-        pos++;
-    }
-    curr->isLeaf = 1;
-}
-
-void printFiltered(struct Trie* node, int pos) {
-    if (node == NULL)
-        return;
-    if (node->isLeaf == 1) {
-        printf("%s\n", word_array);
-    }
-    for (int i = 0; i < LENGTH; i++) {
-        if (node->character[i] != NULL) {
-            if (node->character[i]->isCompatible) {
-                word_array[pos] = i + 'a';
-                printFiltered(node->character[i], pos+1);
-            } else {
-                return;
-            }
-        }
-    }
-}
-
-void freeWord(struct node* node) {
-    // TODO: complete deallocation for words
-}
-
-int hasChildren(struct Trie* curr) {
-    for (int i = 0; i < LENGTH; i++) {
-        if (curr->character[i]) {
-            return 1;       // bambino trovato
-        }
-    }
-    return 0;
-}
-
-void setAllComp(struct Trie* node) {
-    if(root == NULL)
-        return;
-    for(int i = 0; i < LENGTH; i++) {
-        if(node->character[i] != NULL) {
-            if (!node->isCompatible) {
-                node->isCompatible = true;
-                comp_word++;
-            }
-        }
-    }
-}
-
-struct Trie * search(struct Trie* head, char* str) {
-    if (head == NULL) {
-        return NULL;
-    }
-    struct Trie* curr = head;
-    while (*str) {
-        curr = curr->character[lookUpFunction(*str)];
-        if (curr == NULL) {
-            return NULL;
-        }
-        str++;
-    }
-    if (curr->isLeaf == 1) {
-        return curr;
-    } else {
-        return NULL;
-    }
-}
-
-void freeBST() {
-    for (int i = 0; i < 54; i++) {
-        if (cstr[i] != NULL) {
-            free(cstr[i]);
-        }
-    }
-}
-
-bool checkComp(struct Trie *node, struct constraint * constraintNode) {
-    int tmp_count = 0;
-    // TODO:
-}
-
-void banWord(struct Trie* node, struct constraint* constraintNode) {
-    if (node == NULL)
-        return;
-    for (int i = 0; i < LENGTH; i++) {
-        if (node->character[i] != NULL && node->character[i]->isCompatible) {
-            if (i != lookUpFunction(secure_word[node->character[i]->heigth]) && secure_word[node->character[i]->heigth] != '$') {
-                node->character[i]->isCompatible = false;
-            }
-            if (node->character[i]->isCompatible) {
-                checkComp(node->character[i], constraintNode);
-            }
-        }
-    }
-}
-
-// -----------------------------------------------
-
-int explore(char reference[], char new[], int pos, bool incr_flag) {
-    int min_number = 0;
-    exac_flag = false;
-    int l = pos - 1;
-    while (l >= 0) {
-        if (visited[l] < 0) {
-            if (new[l] == new[pos]) {
-                if (reference[l] == new[l]) {
-                    min_number++;
-                    is_present[l] = true;
-                } else {
-                    if (counter(reference, new, l)) {
-                        exac_flag = true;
+bool compare(char *ref_word, char *new_word, char *result_word, char *certain_word, char *presence_needed, constraintCell *cArr, int length) {
+    bool win_flag = true;
+    int constraintValue, tempCardinality;
+    memset(visited, false, length);
+    for (int i = 0; i < length; i++) {
+        if (!visited[i]) {
+            constraintValue = constraintMapper(new_word[i]);
+            tempCardinality = 0;
+            for (int j = i; j < length; j++) {
+                if (new_word[i] == new_word[j]) {
+                    visited[j] = true;
+                    if (new_word[j] == ref_word[j]) {
+                        result_word[j] = '+';
+                        tempCardinality++;
+                        if (certain_word[j] != new_word[j]) {
+                            certain_word[j] = new_word[j];
+                            mod_cw = true;
+                        }
                     } else {
-                        incr_flag = true;
-                    }
-                    not_present[l] = true;
-                }
-                visited[l] = 1;
-            }
-        }
-        l--;
-    }
-    if (incr_flag) {
-        min_number++;
-    }
-    return min_number;
-}
-
-void constraintHandler(char symbol, bool belongs, int min_number, int exact_number) {
-int lookupvalue = lookUpFunction(symbol);
-    if (cstr[lookupvalue] == NULL) {
-        cstr[lookupvalue] = newConstraint(symbol, belongs, min_number, exact_number);
-    }
-    if (cstr[lookupvalue]->belongs) {
-        for (int i = 0; i < k; i++) {
-            if (is_present[i]) {
-                secure_word[i] = symbol;
-            }
-            if (not_present[i]) {
-                cstr[lookupvalue]->not_present[i] = true;
-            }
-        }
-        if (cstr[lookupvalue]->min_number < min_number) {
-            cstr[lookupvalue]->min_number = min_number;
-        }
-        if (exac_flag) {
-            cstr[lookupvalue]->exact_number = min_number;
-        }
-    }
-}
-
-bool compare(char reference[], char new[]) {
-    bool belongs_flag;
-    memset(result, '\0', k + 1);
-    int i = k - 1, min_number = 0, exact_number = 0;
-    for (int j = 0; j < k; j++) {
-        visited[j] = -1;
-    }
-    while (i >= 0) {
-        for (int j = 0; j < k; j++) {
-            is_present[j] = false;
-            not_present[j] = false;
-        }
-        if (reference[i] == new[i]) {
-            result[i] = '+';
-            belongs_flag = true;
-            is_present[i] = true;
-            min_number = explore(reference, new, i, false) + 1;
-        } else {
-            if (strchr(reference, new[i]) == NULL) {
-                result[i] = '/';
-                belongs_flag =  false;
-            } else if (counter(reference, new, i)) {
-                result[i] = '/';
-                exact_number = explore(reference, new, i, false);
-                not_present[i] = true;
-                belongs_flag = true;
-            } else {
-                result[i] = '|';
-                not_present[i] = true;
-                belongs_flag = true;
-                min_number = explore(reference, new, i, true);
-            }
-        }
-        constraintHandler(new[i], belongs_flag, min_number, exact_number);
-        visited[i] = 1;
-        i--;
-    }
-    if (strchr(result, '/') == NULL && strchr(result, '|') == NULL) {
-        return false;
-    } else {
-        printf("%s\n", result);
-        return true;
-    }
-}
-
-int main() {
-    int n = 0, word_count, scanf_return, return_code;
-    char *new_word, *ref_word;
-    struct node * temp_ptr = NULL;
-    struct Trie* root = getNewTrieNode(0);
-
-    comp_word = 0;
-
-    // read word length
-    scanf_return = scanf("%d", &k);
-    getchar_unlocked();
-
-    // read admissible words
-    do {
-        new_word = (char *) malloc(sizeof(char) * (k + 1));
-        return_code = wordHandler(new_word);
-        if (return_code == 0) {
-            insert(root, new_word);
-        }
-    } while (return_code != 4);
-    // free(new_word);
-
-    do {
-        // initialize new game
-        visited = (int *) malloc(sizeof(int) * (k));
-        result = (char *) malloc(sizeof(char) * (k));
-        is_present = (bool *) malloc(sizeof(bool) * (k));
-        not_present = (bool *) malloc(sizeof(bool) * (k));
-        word_array = (char *) malloc(sizeof(char) * k);
-
-        secure_word = (char *) malloc(sizeof(char) * k);
-        memset(secure_word, '$', k);
-        for (int i = 0; i < LENGTH; i++) {
-            cstr[i] = NULL;
-        }
-
-        word_count = 0;
-        bool filtered_flag = false;
-        bool print_flag = false;
-        winner_flag = false;
-
-        // read reference word
-        ref_word = (char *) malloc(sizeof(char) * (k+1));
-        // scanf_return = scanf("%s", ref_word);
-        wordHandler(ref_word);
-
-        // read number n of words
-        // scanf_return = scanf("%d", &n);
-        scanf_return = scanf("%d", &n);
-        getchar_unlocked();
-
-        // read words sequence
-        do {
-            new_word = (char *) malloc(sizeof(char) * (k+1));
-            return_code = wordHandler(new_word);
-            // scanf_return = scanf("%s", new_word);
-            if (return_code == 3) {
-                printFiltered(root, 0);
-            } else if (return_code == 1 && !filtered_flag) {
-                filtered_flag = true;
-            } else if (filtered_flag == true) {
-                if (return_code == 2) {
-                    comp_word = 0;
-                    banWord(root, *cstr);
-                    filtered_flag = false;
-                } else {
-                    insert(root, new_word);
-                }
-            } else {
-                if (search(root, new_word) != NULL) {
-                    print_flag = compare(ref_word, new_word);
-                    comp_word = 0;
-                    banWord(root, *cstr);
-                    if (print_flag) {
-                        // compWordCount = printCompWord(root, false);
-                        printf("%d\n", comp_word);
-                    } else {
-                        printf("ok\n");
-                        winner_flag = true;
-                    }
-                    word_count++;
-                } else {
-                    printf("not_exists\n");
-                }
-            }
-        } while (word_count < n && !winner_flag);
-
-        if (winner_flag == false) {
-            printf("ko\n");
-        }
-
-        // freeing memory
-
-
-        freeBST();
-        free(ref_word);
-        free(visited);
-        free(result);
-        free(is_present);
-        free(not_present);
-        visited = NULL;
-        result = NULL;
-        is_present = not_present = NULL;
-
-        do {
-            // TODO: complete this
-            new_word = (char *) malloc(sizeof(char) * (k+1));
-            return_code = wordHandler(new_word);
-            if (return_code == 5) {
-                break;
-            }
-
-            if (return_code != 4) {
-                if (return_code == 1 && !filtered_flag) {
-                    filtered_flag = true;
-                } else {
-                    if (return_code == 2) {
-                        filtered_flag = false;
-                    } else {
-                        if (strlen(new_word) > 0) {
-                            insert(root, new_word);
+                        win_flag = false;
+                        if (strchr(ref_word, new_word[j]) == NULL) {
+                            result_word[j] = '/';
+                            cArr[constraintValue].cardinality = -2;
+                        } else {
+                            int d, n, c;
+                            d = n = c = 0;
+                            for (int t = 0; t < length; t++) {
+                                if (ref_word[t] == new_word[i]) {
+                                    n++;
+                                    if (ref_word[t] == new_word[t]) {
+                                        c++;
+                                    }
+                                }
+                            }
+                            for (int t = 0; t < j; t++) {
+                                if (new_word[t] == new_word[i]) {
+                                    if (new_word[t] != ref_word[t]) {
+                                        d++;
+                                    }
+                                }
+                            }
+                            if (d >= (n-c)) {
+                                result_word[j] = '/';
+                                cArr[constraintValue].presence[j] = -1;
+                                cArr[constraintValue].exact_number = true;
+                            } else {
+                                result_word[j] = '|';
+                                cArr[constraintValue].presence[j] = -1;
+                                if (strchr(presence_needed, new_word[i]) == NULL) {
+                                    if (strchr(certain_word, new_word[i]) == NULL) {
+                                        int z = 0;
+                                        while (presence_needed[z] != '*' && z < length) {
+                                            z++;
+                                        }
+                                        presence_needed[z] = new_word[i];
+                                        mod_pn = true;
+                                    }
+                                }
+                                tempCardinality++;
+                            }
                         }
                     }
                 }
             }
-        } while (return_code != 4);
+            if (cArr[constraintValue].cardinality >= -1 && tempCardinality > cArr[constraintValue].cardinality) {
+                cArr[constraintValue].cardinality = tempCardinality;
+            }
+        }
+    }
+    return win_flag;
+}
 
-        // TODO: deallocate memory
-        scanf_return = scanf_return + 1;
-        comp_word = 0;
-        setAllComp(root);
+bool checkCertainWord(const char * word, const char * cw, int k) {
+    for (int i = 0; i < k; i++) {
+        if (cw[i] != '*') {
+            if (cw[i] != word[i]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
-    } while (return_code != 5);
+bool checkPresenceNeeded(const char * word, const char * pn, int k) {
+    bool found;
+    for (int i = 0; i < k; i++) {
+        if (pn[i] != '*') {
+            found = false;
+            for (int j = 0; j < k && !found; j++) {
+                if (word[j] == pn[i]) {
+                    found = true;
+                }
+            }
+            if (!found) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool heavyCheckBan(constraintCell * constraints, char * temp, char *cw, char *pn, int k) {
+
+    if ((mod_cw && checkCertainWord(temp, cw, k)) || (mod_pn && checkPresenceNeeded(temp, pn, k))) {
+        return true;
+    }
+
+    int charCount;
+    constraintCell tempConstraint;
+
+    for (int i = 0; i < k; i++) {
+        visited[i] = false;
+    }
+
+    for (int i = 0; i < k; i++) {
+        if (!visited[i]) {
+            tempConstraint = constraints[constraintMapper(temp[i])];
+            if (tempConstraint.cardinality != -1) {
+                if (tempConstraint.cardinality == -2) {
+                    return true;
+                }
+                charCount = 0;
+                for (int z = i; z < k; z++) {
+                    if (temp[z] == temp[i]) {
+                        visited[z] = true;
+                        if (tempConstraint.presence[z] == -1) {
+                            return true;
+                        }
+                        charCount++;
+                        if (tempConstraint.exact_number) {
+                            if (tempConstraint.cardinality < charCount) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                if (tempConstraint.cardinality > charCount) {
+                    return true;
+                } else {
+                    if (tempConstraint.exact_number) {
+                        if (tempConstraint.cardinality != charCount) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void banwords(struct nodeLIST ** root, char * cw, char * pn, constraintCell * constraints, int k) {
+    // cw: certain_word, pn: presence_needed
+    struct nodeLIST *temp = *root, *prev = NULL;
+    while (temp != NULL) {
+        if (heavyCheckBan(constraints, temp->word, cw, pn, k)) {
+            if (*root == temp) {
+                *root = (*root)->next;
+                free(temp);
+                temp = *root;
+            } else {
+                prev->next = temp->next;
+                free(temp);
+                temp = prev->next;
+            }
+            quantity--;
+        } else {
+            prev = temp;
+            temp = temp->next;
+        }
+    }
+}
+
+int getWord(char *temp_word, int length) {
+    int i = 0;
+    char temp;
+    do {
+        temp = (char) getchar_unlocked();
+        if (temp != EOF) {
+            temp_word[i] = temp;
+            i++;
+        } else {
+            return -1;
+        }
+    } while (temp != '\n');
+
+    if (temp_word[0] == '+') {
+        temp = temp_word[12];
+        switch (temp) {
+            case 't': // +nuova_partita
+                return 1;
+            case 'r': // +stampa_filtrate
+                return 2;
+            case 'n': // +inserisci_inizio
+                return 3;
+            case 'i': // +inserisci_fine
+                return 4;
+            default:
+                return -1;
+        }
+    }
+    temp_word[length] = '\0';
+    return 0;
+}
+
+// --------------- BST TREE -----------------
+
+struct nodeBST {
+    char * word;
+    struct nodeBST * left;
+    struct nodeBST * right;
+};
+
+struct nodeBST * newNodeRB(char *word, int k) {
+    struct nodeBST * new_node;
+    new_node = (struct nodeBST *) malloc (sizeof (struct nodeBST) + sizeof(char) * k);
+    new_node->word = (char *)(new_node + 1);
+    strcpy(new_node->word, word);
+    new_node->left = NULL;
+    new_node->right = NULL;
+    return new_node;
+}
+
+// TODO: change this, taken from the internet
+struct nodeBST * insertNodeRB(struct nodeBST * root, char * word, int k, struct nodeBST ** wordPointer) {
+    struct nodeBST * newnode = newNodeRB(word, k);
+    struct nodeBST * x = root;
+    struct nodeBST * y = NULL;
+
+    while (x != NULL) {
+        y = x;
+        if (strcmp(word, x->word) < 0)
+            x = x->left;
+        else
+            x = x->right;
+    }
+
+    if (y == NULL)
+        y = newnode;
+    else if (strcmp(word, y->word) < 0)
+        y->left = newnode;
+    else
+        y->right = newnode;
+    *wordPointer = newnode;
+    return y;
+}
+
+void newListFiltered(constraintCell * constraints, struct nodeBST *node, struct nodeLIST **root, struct nodeLIST **head, char *cw, char *pn, int k) {
+    if (node != NULL) {
+        newListFiltered(constraints, node->left, root, head, cw, pn, k);
+        if (!heavyCheckBan(constraints, node->word, cw, pn, k)) {
+            if (*root == NULL) {
+                *root = newNodeList(node->word);
+                *head = *root;
+            } else {
+                (*head)->next = newNodeList(node->word);
+                *head = (*head)->next;
+            }
+            quantity++;
+        }
+        newListFiltered(constraints, node->right, root, head, cw, pn, k);
+    }
+}
+
+// TODO: Change this, from the internet
+struct nodeBST * searchRB(struct nodeBST * node, char * word) {
+    while (node != NULL) {
+        int retCode = strcmp(word, node->word);
+        if (retCode > 0)
+            node = node->right;
+        else if (retCode < 0)
+            node = node->left;
+        else
+            return node;
+    }
+    return NULL;
+}
+
+int main() {
+    bool winner_flag, filtered_flag, new_insertion_flag;
+    int i, k, n, code, rc;
+    char *temp_word, *reference_word, *result_word, *certain_word, *presences_needed;
+    struct nodeBST* rootRB = NULL;
+    struct nodeBST* wordPointer = NULL;
+    struct nodeLIST* rootLIST = NULL;
+    struct nodeLIST* headLIST = NULL;
+    constraintCell constraints[CONSTQUANTITY];
+
+    // acquire length:
+    rc = scanf("%d\n", &k);
+    rc = rc + 1;
+
+    // acquire words:
+    temp_word = (char *) malloc(sizeof(char) * k);
+    do {
+        code = getWord(temp_word, k);
+        if (code == 0) {
+            if (rootRB == NULL) {
+                rootRB = insertNodeRB(rootRB, temp_word, k, &wordPointer);
+            } else {
+                insertNodeRB(rootRB, temp_word, k, &wordPointer);
+            }
+        }
+    } while (code == 0);
+
+    resetConstraints(constraints, k, true);
+
+    // define reference word:
+    reference_word = (char *) malloc(sizeof(char) * k);
+    result_word = (char *) malloc(sizeof(char) * k);
+    certain_word = (char *) malloc(sizeof(char) * k);
+    presences_needed = (char *) malloc(sizeof(char) * k);
+    visited = (bool *) malloc (sizeof(bool) * k);
+
+    new_insertion_flag = false;
+
+    // new game begins
+    do {
+        quantity = 0;
+
+        getWord(reference_word, k);
+
+        // acquire tries quantity
+        rc = scanf("%d\n", &n);
+        rc = rc + 1;
+
+        // set certain_word & presences_needed to '*'
+        for (int c = 0; c < k; c++) {
+            certain_word[c] = '*';
+            presences_needed[c] = '*';
+        }
+
+        i = 0;
+        bool list_generated = false;
+        winner_flag = filtered_flag = false;
+
+        do {
+            code = getWord(temp_word, k);
+            if (code == 0) {
+                if (filtered_flag) {
+                    insertNodeRB(rootRB, temp_word, k, &wordPointer);
+                    if (list_generated) {
+                        mod_pn = mod_cw = true;
+                        if (!heavyCheckBan(constraints, temp_word, certain_word, presences_needed, k)) {
+                            quantity++;
+                            struct nodeLIST * tempNode = newNodeList(wordPointer->word);
+                            insertNode(&rootLIST, tempNode);
+                        }
+                        mod_pn = mod_cw = false;
+                    }
+                } else {
+                    if (searchRB(rootRB, temp_word) != NULL) {
+                        new_insertion_flag = false;
+                        winner_flag = compare(reference_word, temp_word, result_word, certain_word, presences_needed, constraints, k);
+                        if (!list_generated) {
+                            // if its the first time of a new game, init list by removing words
+                            mod_pn = mod_cw = true;
+                            newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                            list_generated = true;
+                            mod_pn = mod_cw = false;
+                        } else {
+                            // else, simply ban words
+                            banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                            mod_pn = mod_cw = false;
+                        }
+                        if (!winner_flag) {
+                            printf("%s\n%d\n", result_word, quantity);
+                        } else {
+                            printf("ok\n");
+                        }
+                        i++;
+                    } else {
+                        printf("not_exists\n");
+                    }
+                }
+            } else if (code == 2) {
+                if (!list_generated) {
+                    // if its the first time of a new game, init list by removing words
+                    mod_pn = mod_cw = true;
+                    newListFiltered(constraints, rootRB, &rootLIST, &headLIST, certain_word, presences_needed, k);
+                    mod_pn = mod_cw = false;
+                    list_generated = true;
+                } else {
+                    if (new_insertion_flag) {
+                        new_insertion_flag = false;
+                        banwords(&rootLIST, certain_word, presences_needed, constraints, k);
+                        mod_pn = mod_cw = false;
+                    }
+                }
+                printList(rootLIST);
+            } else if (code == 3) {
+                filtered_flag = true;
+            } else if (code == 4) {
+                filtered_flag = false;
+                new_insertion_flag = true;
+            }
+        } while (i < n && !winner_flag && code != -1);
+
+        if (!winner_flag && code != -1) {
+            printf("ko\n");
+        }
+
+        do {
+            code = getWord(temp_word, k);
+            switch (code) {
+                case 0:
+                    insertNodeRB(rootRB, temp_word, k, &wordPointer);
+                    break;
+                case 1:
+                    resetList(&rootLIST);
+                    resetConstraints(constraints, k, false);
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    filtered_flag = true;
+                    break;
+                case 4:
+                    filtered_flag = false;
+                    new_insertion_flag = true;
+                    break;
+                default:
+                    break;
+            }
+        } while (code != 1 && code != -1);
+    } while (code != -1);
 }
