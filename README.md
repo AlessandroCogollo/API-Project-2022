@@ -1,3 +1,6 @@
+## API Project [2022]
+The project delievered as the final exam of API can be found in the main directory (/main.c), meanwhile the description of project can be found in the docs section. The project tries to replicate a game like mastermind; 
+
 <!-- ABOUT THE PROJECT -->
 ## API Project Verifier [2022]
 This project is meant to be a substitute of the online verifier of the API project 2022, and it's still in an embryonic version. It has to be calibrated since, obviously, the execution time of the program on your machine are probably going to differ from those of the online verifier; for this reason, it is mostly useful to compile and check if the output is correct, with only a single action, and check if execution times are decreasing.
